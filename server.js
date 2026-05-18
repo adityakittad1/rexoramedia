@@ -2,11 +2,14 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const os = require("os");
 
 const root = __dirname;
 const port = Number(process.env.PORT || 4174);
+const isVercel = Boolean(process.env.VERCEL);
 const dataDir = path.join(root, "data");
-const uploadDir = path.join(root, "uploads");
+const uploadDir = isVercel ? path.join(os.tmpdir(), "rexora-uploads") : path.join(root, "uploads");
+let runtimeSite = null;
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -38,7 +41,6 @@ const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || localEnv.ADMIN_PASS
 const sessionSecret = process.env.SESSION_SECRET || localEnv.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 
 const ensureDirs = () => {
-  fs.mkdirSync(dataDir, { recursive: true });
   fs.mkdirSync(uploadDir, { recursive: true });
 };
 
@@ -105,15 +107,25 @@ const safeJoin = (base, target) => {
   return fullPath.startsWith(base) ? fullPath : base;
 };
 
-const readSite = () => JSON.parse(fs.readFileSync(sitePath(), "utf8"));
+const readSite = () => {
+  if (runtimeSite) return runtimeSite;
+  runtimeSite = JSON.parse(fs.readFileSync(sitePath(), "utf8"));
+  return runtimeSite;
+};
 
 const writeSite = (site) => {
-  fs.writeFileSync(sitePath(), JSON.stringify(site, null, 2));
+  runtimeSite = site;
+  if (!isVercel) {
+    fs.writeFileSync(sitePath(), JSON.stringify(site, null, 2));
+  }
 };
 
 const hashPassword = (value) => crypto.createHash("sha256").update(value).digest("hex");
 
 const login = async (request, response) => {
+  if (!adminEmail || !adminPasswordHash) {
+    return sendJson(response, 500, { ok: false, message: "Admin auth environment variables are not configured." });
+  }
   const { email, password } = JSON.parse(await getBody(request));
   const isValid = email === adminEmail && hashPassword(password || "") === adminPasswordHash;
   if (!isValid) return sendJson(response, 403, { ok: false, message: "Invalid login" });
@@ -143,7 +155,9 @@ const serveFile = (request, response, pathname) => {
     "/admin/dashboard": getSession(request) ? "admin-dashboard.html" : "admin-login.html",
   };
   const fileName = routeMap[pathname] || pathname.slice(1);
-  const filePath = safeJoin(root, fileName);
+  const filePath = pathname.startsWith("/uploads/")
+    ? safeJoin(uploadDir, pathname.replace("/uploads/", ""))
+    : safeJoin(root, fileName);
   fs.readFile(filePath, (error, content) => {
     if (error) return send(response, 404, "Not found", { "Content-Type": "text/plain; charset=utf-8" });
     send(response, 200, content, { "Content-Type": types[path.extname(filePath)] || "application/octet-stream" });
@@ -152,7 +166,7 @@ const serveFile = (request, response, pathname) => {
 
 ensureDirs();
 
-const server = http.createServer(async (request, response) => {
+const handler = async (request, response) => {
   try {
     const url = new URL(request.url, `http://127.0.0.1:${port}`);
     const pathname = decodeURIComponent(url.pathname);
@@ -190,10 +204,16 @@ const server = http.createServer(async (request, response) => {
 
     serveFile(request, response, pathname);
   } catch (error) {
+    console.error(error);
     sendJson(response, 500, { ok: false, message: error.message });
   }
-});
+};
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Rexora running at http://127.0.0.1:${port}`);
-});
+if (require.main === module) {
+  const server = http.createServer(handler);
+  server.listen(port, "127.0.0.1", () => {
+    console.log(`Rexora running at http://127.0.0.1:${port}`);
+  });
+}
+
+module.exports = handler;
