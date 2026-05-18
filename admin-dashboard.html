@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rexora Admin Dashboard</title>
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body class="dashboard-page">
+    <div class="admin-bg"></div>
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Rexora CMS</p>
+        <h1>Creative Control Room</h1>
+      </div>
+      <div class="dashboard-actions">
+        <a href="/" target="_blank">View Site</a>
+        <button type="button" data-save>Save Changes</button>
+        <button type="button" data-logout>Logout</button>
+      </div>
+    </header>
+
+    <main class="dashboard-layout">
+      <aside class="admin-tabs" data-tabs>
+        <button class="is-active" data-tab="branding">Branding</button>
+        <button data-tab="hero">Hero</button>
+        <button data-tab="services">Services</button>
+        <button data-tab="founder">Founder</button>
+        <button data-tab="content">Content</button>
+        <button data-tab="videos">Videos</button>
+        <button data-tab="media">Media</button>
+        <button data-tab="animations">Animations</button>
+      </aside>
+
+      <section class="admin-panel">
+        <div class="analytics-strip">
+          <article><span data-count-services>0</span><small>Services</small></article>
+          <article><span data-count-videos>0</span><small>Videos</small></article>
+          <article><span data-count-stats>0</span><small>Stats</small></article>
+          <article><span data-count-media>0</span><small>Media</small></article>
+        </div>
+        <div class="panel-section is-active" data-panel="branding">
+          <h2>Website Branding</h2>
+          <div class="form-grid">
+            <label>Logo Text<input data-bind="branding.logoText" /></label>
+            <label>Logo Image URL<input data-bind="branding.logoUrl" placeholder="/uploads/logo.png" /></label>
+            <label>Favicon URL<input data-bind="branding.faviconUrl" /></label>
+            <label>Body Font<input data-bind="branding.font" /></label>
+            <label>Display Font<input data-bind="branding.displayFont" /></label>
+            <label>Background<input type="color" data-bind="branding.colors.background" /></label>
+            <label>Surface<input type="color" data-bind="branding.colors.surface" /></label>
+            <label>Text<input type="color" data-bind="branding.colors.text" /></label>
+            <label>Muted<input type="color" data-bind="branding.colors.muted" /></label>
+            <label>Primary<input type="color" data-bind="branding.colors.primary" /></label>
+            <label>Secondary<input type="color" data-bind="branding.colors.secondary" /></label>
+            <label>Accent<input type="color" data-bind="branding.colors.accent" /></label>
+          </div>
+        </div>
+
+        <div class="panel-section" data-panel="hero">
+          <h2>Hero Section Management</h2>
+          <div class="form-grid">
+            <label>Background Image/Video URL<input data-bind="hero.backgroundMedia" /></label>
+            <label>YouTube Background Link<input data-bind="hero.youtubeUrl" data-youtube-input /></label>
+            <label>Hero Heading<textarea rows="3" data-bind="hero.heading"></textarea></label>
+            <label>Subheading<textarea rows="4" data-bind="hero.subheading"></textarea></label>
+            <label>Primary CTA<input data-bind="hero.primaryCta" /></label>
+            <label>Secondary CTA<input data-bind="hero.secondaryCta" /></label>
+            <label>Animated Typing Text<input data-bind-array="hero.typing" placeholder="Films, Campaigns, Motion" /></label>
+            <label>Overlay Darkness<input type="range" min="0" max="95" data-bind-number="hero.overlayDarkness" /></label>
+            <label>Overlay Blur<input type="range" min="0" max="18" data-bind-number="hero.overlayBlur" /></label>
+          </div>
+          <div class="youtube-preview" data-youtube-preview></div>
+        </div>
+
+        <div class="panel-section" data-panel="services">
+          <div class="panel-title-row">
+            <h2>Services Management</h2>
+            <button type="button" data-add-service>Add Service</button>
+          </div>
+          <div class="editable-list" data-services-editor></div>
+        </div>
+
+        <div class="panel-section" data-panel="founder">
+          <h2>Meet Our Founder</h2>
+          <div class="form-grid">
+            <label>Founder Image URL<input data-bind="founder.image" /></label>
+            <label>Upload Founder Image<input type="file" data-founder-upload accept="image/*,video/*" /></label>
+            <label>Founder Name<input data-bind="founder.name" /></label>
+            <label>Designation<input data-bind="founder.role" /></label>
+            <label class="wide-field">Description<textarea rows="5" data-bind="founder.bio"></textarea></label>
+          </div>
+          <div class="founder-admin-preview" data-founder-preview></div>
+          <div class="panel-title-row">
+            <h3>Founder Social Links</h3>
+            <button type="button" data-add-founder-social>Add Social Link</button>
+          </div>
+          <div class="editable-list" data-founder-socials-editor></div>
+        </div>
+
+        <div class="panel-section" data-panel="content">
+          <h2>Content Management</h2>
+          <div class="form-grid">
+            <label>Intro Headline<textarea rows="3" data-bind="content.introHeadline"></textarea></label>
+            <label>Intro Paragraph<textarea rows="4" data-bind="content.introText"></textarea></label>
+            <label>Scale Headline<textarea rows="3" data-bind="content.scaleHeadline"></textarea></label>
+            <label>Scale Paragraph<textarea rows="4" data-bind="content.scaleText"></textarea></label>
+            <label>Footer Headline<textarea rows="3" data-bind="content.footerHeadline"></textarea></label>
+            <label>Footer Text<textarea rows="3" data-bind="content.footerText"></textarea></label>
+            <label>Email<input data-bind="contact.email" /></label>
+            <label>Phone<input data-bind="contact.phone" /></label>
+            <label>WhatsApp Number<input data-bind="contact.whatsapp" /></label>
+            <label>WhatsApp Message<textarea rows="3" data-bind="contact.whatsappMessage"></textarea></label>
+            <label>Location<input data-bind="contact.location" /></label>
+            <label>Instagram<input data-bind="contact.instagram" /></label>
+            <label>YouTube<input data-bind="contact.youtube" /></label>
+            <label>LinkedIn<input data-bind="contact.linkedin" /></label>
+          </div>
+          <div class="panel-title-row">
+            <h3>Stats</h3>
+            <button type="button" data-add-stat>Add Stat</button>
+          </div>
+          <div class="editable-list" data-stats-editor></div>
+          <div class="panel-title-row">
+            <h3>Testimonials</h3>
+            <button type="button" data-add-testimonial>Add Testimonial</button>
+          </div>
+          <div class="editable-list" data-testimonials-editor></div>
+          <div class="panel-title-row">
+            <h3>Team</h3>
+            <button type="button" data-add-team>Add Team Member</button>
+          </div>
+          <div class="editable-list" data-team-editor></div>
+        </div>
+
+        <div class="panel-section" data-panel="videos">
+          <div class="panel-title-row">
+            <h2>YouTube Video CMS</h2>
+            <button type="button" data-add-video>Add Video</button>
+          </div>
+          <p>
+            Paste YouTube links to auto-generate thumbnails and preview cards. Use the visible toggle to publish or hide
+            each video on the Rexora homepage.
+          </p>
+          <div class="editable-list" data-videos-editor></div>
+        </div>
+
+        <div class="panel-section" data-panel="media">
+          <h2>Media Management</h2>
+          <label class="upload-zone">
+            Upload Images/Videos
+            <input type="file" data-upload multiple accept="image/*,video/*" />
+          </label>
+          <div class="media-grid" data-media-grid></div>
+        </div>
+
+        <div class="panel-section" data-panel="animations">
+          <h2>Animation Controls</h2>
+          <div class="toggle-grid">
+            <label><input type="checkbox" data-bind-checkbox="animations.enabled" /> Enable Animations</label>
+            <label><input type="checkbox" data-bind-checkbox="animations.particles" /> Particle Backgrounds</label>
+            <label><input type="checkbox" data-bind-checkbox="animations.cursorGlow" /> Cursor Glow Effects</label>
+            <label><input type="checkbox" data-bind-checkbox="animations.cinematicTransitions" /> Cinematic Transitions</label>
+          </div>
+          <div class="form-grid">
+            <label>Scroll Animation Speed<input type="range" min="0.02" max="0.2" step="0.01" data-bind-number="animations.scrollSpeed" /></label>
+            <label>Text Animation Style<select data-bind="animations.textStyle"><option>split-rise</option><option>fade</option><option>cinematic-cut</option></select></label>
+            <label>Section Entrance<select data-bind="animations.sectionEntrance"><option>rise-fade</option><option>blur-in</option><option>slide-left</option></select></label>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" data-toast></div>
+    <script src="/admin-dashboard.js"></script>
+  </body>
+</html>

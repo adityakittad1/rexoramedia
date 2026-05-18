@@ -1,0 +1,11 @@
+{
+  "name": "rexora-premium-cms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rexora premium animated website with hidden admin CMS.",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "check": "node --check server.js && node --check script.js && node --check admin-login.js && node --check admin-dashboard.js"
+  }
+}

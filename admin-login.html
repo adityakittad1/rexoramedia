@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rexora Admin Login</title>
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body class="admin-login-page">
+    <div class="admin-bg"></div>
+    <main class="login-shell">
+      <form class="login-card" method="post" action="/api/login" autocomplete="off" data-login-form>
+        <a class="back-link" href="/">Back to site</a>
+        <p class="eyebrow">Hidden Control Room</p>
+        <h1>Rexora Admin</h1>
+        <p>Unlock the studio dashboard to edit the live website, media, services, and motion system.</p>
+        <label>
+          Email
+          <input type="email" name="email" placeholder="admin@example.com" required />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" placeholder="Enter secure password" required />
+        </label>
+        <button type="submit">Enter Dashboard</button>
+        <span class="form-message" data-login-message></span>
+      </form>
+    </main>
+    <script src="/admin-login.js"></script>
+  </body>
+</html>
