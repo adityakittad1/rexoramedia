@@ -39,6 +39,7 @@ const localEnv = readEnv();
 const adminEmail = process.env.ADMIN_EMAIL || localEnv.ADMIN_EMAIL;
 const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || localEnv.ADMIN_PASSWORD_HASH;
 const sessionSecret = process.env.SESSION_SECRET || localEnv.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 
 const ensureDirs = () => {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -129,7 +130,7 @@ const login = async (request, response) => {
     return sendJson(response, 500, { ok: false, message: "Admin auth environment variables are not configured." });
   }
   const { email, password } = JSON.parse(await getBody(request));
-  const isValid = email === adminEmail && hashPassword(password || "") === adminPasswordHash;
+  const isValid = normalizeEmail(email) === normalizeEmail(adminEmail) && hashPassword(password || "") === adminPasswordHash;
   if (!isValid) return sendJson(response, 403, { ok: false, message: "Invalid login" });
   const token = makeToken();
   sendJson(response, 200, { ok: true }, {
