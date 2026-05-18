@@ -1,0 +1,226 @@
+{
+  "branding": {
+    "name": "Rexora Media",
+    "logoText": "Rexora Media",
+    "logoUrl": "",
+    "faviconUrl": "",
+    "font": "Inter",
+    "displayFont": "Impact",
+    "colors": {
+      "background": "#050509",
+      "surface": "#11111a",
+      "text": "#fff8ee",
+      "muted": "#a9a0b7",
+      "primary": "#ff4d2e",
+      "secondary": "#8b5cf6",
+      "accent": "#00f5d4"
+    }
+  },
+  "hero": {
+    "backgroundMedia": "assets/rexora-hero.png",
+    "youtubeUrl": "",
+    "youtubeThumb": "",
+    "heading": "Visuals That Perform",
+    "subheading": "Rexora Media is a premier digital agency specializing in high-end video production, performance marketing, and full-service creative solutions.",
+    "typing": [
+      "Social Growth",
+      "Performance Ads",
+      "Video Production",
+      "Brand Strategy",
+      "Web Experiences"
+    ],
+    "primaryCta": "Start Growing",
+    "secondaryCta": "Explore Services",
+    "overlayDarkness": 72,
+    "overlayBlur": 2
+  },
+  "animations": {
+    "enabled": true,
+    "scrollSpeed": 0.08,
+    "textStyle": "split-rise",
+    "particles": true,
+    "cursorGlow": true,
+    "cinematicTransitions": true,
+    "sectionEntrance": "rise-fade"
+  },
+  "content": {
+    "introHeadline": "Rexora Media turns strategy into visuals that perform.",
+    "introText": "Rexora Media is a premier digital agency specializing in high-end video production, performance marketing, and full-service creative solutions. From strategy to execution, we make visuals that perform.",
+    "scaleHeadline": "Digital growth, creative production, and execution under one roof.",
+    "scaleText": "We connect social media management, paid ads, brand strategy, websites, reels, VFX, motion graphics, and premium design into one growth-focused creative system.",
+    "footerHeadline": "Ready to grow with Rexora Media?",
+    "footerText": "Message us on WhatsApp or Instagram and tell us what you want to build next."
+  },
+  "stats": [
+    {
+      "label": "Projects Delivered",
+      "value": "50+",
+      "visible": true
+    },
+    {
+      "label": "Active Clients",
+      "value": "10+",
+      "visible": true
+    },
+    {
+      "label": "Team Members",
+      "value": "8+",
+      "visible": true
+    }
+  ],
+  "founder": {
+    "name": "Aditya Kittad",
+    "role": "Founder & Creative Director",
+    "bio": "Aditya leads Rexora Media with a focus on performance-led creativity, premium visuals, and digital growth systems for modern brands. His work connects strategy, production, and distribution so every visual has a clear business purpose.",
+    "image": "assets/rexora-hero.png",
+    "socials": [
+      {
+        "label": "Instagram",
+        "url": "https://www.instagram.com/rexora.media/",
+        "visible": true
+      },
+      {
+        "label": "WhatsApp",
+        "url": "https://wa.me/919112646267",
+        "visible": true
+      }
+    ]
+  },
+  "services": [
+    {
+      "id": "social-media-management",
+      "category": "Digital Growth & Strategy",
+      "icon": "SM",
+      "title": "Social Media Management",
+      "description": "Content calendars, brand voice, publishing systems, community direction, and platform-native creative planning.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "performance-marketing",
+      "category": "Digital Growth & Strategy",
+      "icon": "PM",
+      "title": "Performance Marketing",
+      "description": "Growth funnels, campaign strategy, creative testing, conversion planning, and performance-focused reporting.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "paid-ads-management",
+      "category": "Digital Growth & Strategy",
+      "icon": "AD",
+      "title": "Paid Ads Management",
+      "description": "Meta and Google ad management, campaign setup, targeting, optimization, and high-performing ad creatives.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "brand-strategy",
+      "category": "Digital Growth & Strategy",
+      "icon": "BS",
+      "title": "Brand Strategy",
+      "description": "Positioning, visual direction, messaging, launch strategy, and creative systems built for stronger recall.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "website-development",
+      "category": "Digital Growth & Strategy",
+      "icon": "WD",
+      "title": "Website Development",
+      "description": "Premium landing pages, business websites, conversion flows, responsive design, and scalable web experiences.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "video-production",
+      "category": "Creative & Production",
+      "icon": "VP",
+      "title": "Video Production",
+      "description": "High-end ad films, launch videos, event coverage, product shoots, founder stories, and cinematic edits.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "reels-short-form",
+      "category": "Creative & Production",
+      "icon": "RL",
+      "title": "Reels & Short-Form Content",
+      "description": "Scroll-stopping reels, hooks, creator-style edits, trend formats, and social-first content packages.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "motion-graphics-animation",
+      "category": "Creative & Production",
+      "icon": "MG",
+      "title": "Motion Graphics & Animation",
+      "description": "Animated explainers, typography systems, logo motion, title cards, and dynamic campaign visuals.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "vfx-special-effects",
+      "category": "Creative & Production",
+      "icon": "FX",
+      "title": "VFX & Special Effects",
+      "description": "Premium effects, cleanup, compositing, transitions, cinematic polish, and visual enhancement for videos.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    },
+    {
+      "id": "graphic-design-branding",
+      "category": "Creative & Production",
+      "icon": "GD",
+      "title": "Graphic Design & Branding",
+      "description": "Brand identity, posters, social creatives, packaging direction, campaign visuals, and visual systems.",
+      "image": "assets/rexora-hero.png",
+      "visible": true
+    }
+  ],
+  "videos": [],
+  "testimonials": [
+    {
+      "quote": "Rexora turned scattered ideas into one premium launch system. The film, edits, and graphics finally felt like one brand.",
+      "name": "Founder",
+      "role": "D2C Brand"
+    },
+    {
+      "quote": "The team understood pace. Strategy, shoot, design, and delivery moved without losing the cinematic quality.",
+      "name": "Marketing Lead",
+      "role": "Events Company"
+    },
+    {
+      "quote": "They helped us show up consistently with content that felt polished, current, and genuinely ours.",
+      "name": "Creator",
+      "role": "Education"
+    }
+  ],
+  "team": [
+    {
+      "name": "Creative Director",
+      "role": "Strategy & Films",
+      "image": ""
+    },
+    {
+      "name": "Motion Lead",
+      "role": "Design & Animation",
+      "image": ""
+    },
+    {
+      "name": "Social Producer",
+      "role": "Content Systems",
+      "image": ""
+    }
+  ],
+  "contact": {
+    "email": "hello@rexora.media",
+    "phone": "9112646267",
+    "whatsapp": "9112646267",
+    "whatsappMessage": "Hello Rexora Media, I want to know more about your services.",
+    "location": "India",
+    "instagram": "https://www.instagram.com/rexora.media/",
+    "youtube": "https://youtube.com/@rexora",
+    "linkedin": "https://linkedin.com/company/rexora"
+  }
+}

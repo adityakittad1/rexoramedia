@@ -3,7 +3,21 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "index.html",
+          "styles.css",
+          "script.js",
+          "admin-login.html",
+          "admin-login.js",
+          "admin-dashboard.html",
+          "admin-dashboard.js",
+          "admin.css",
+          "data/**",
+          "assets/**"
+        ]
+      }
     }
   ],
   "routes": [

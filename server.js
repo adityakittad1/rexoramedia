@@ -45,6 +45,7 @@ const ensureDirs = () => {
 };
 
 const sitePath = () => path.join(dataDir, "site.json");
+const defaultSitePath = () => path.join(dataDir, "site.default.json");
 
 const send = (response, status, body, headers = {}) => {
   response.writeHead(status, headers);
@@ -109,7 +110,8 @@ const safeJoin = (base, target) => {
 
 const readSite = () => {
   if (runtimeSite) return runtimeSite;
-  runtimeSite = JSON.parse(fs.readFileSync(sitePath(), "utf8"));
+  const source = fs.existsSync(sitePath()) ? sitePath() : defaultSitePath();
+  runtimeSite = JSON.parse(fs.readFileSync(source, "utf8"));
   return runtimeSite;
 };
 
