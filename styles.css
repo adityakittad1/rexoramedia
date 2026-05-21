@@ -591,8 +591,11 @@ section {
 .founder-section {
   position: relative;
   overflow: hidden;
-  grid-template-columns: minmax(280px, 0.7fr) minmax(320px, 0.82fr);
+  grid-template-columns: minmax(280px, 0.68fr) minmax(520px, 1fr);
   align-items: center;
+  gap: clamp(26px, 4.6vw, 70px);
+  min-height: min(820px, calc(100vh - 92px));
+  padding-block: clamp(72px, 7vw, 96px);
   background:
     radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 30rem),
     radial-gradient(circle at 80% 80%, color-mix(in srgb, var(--primary) 24%, transparent), transparent 34rem),
@@ -600,20 +603,20 @@ section {
 }
 
 .founder-section .section-copy {
-  max-width: 720px;
+  max-width: 620px;
 }
 
 .founder-section .section-copy h2 {
-  font-size: clamp(3.8rem, 7.5vw, 8.6rem);
+  font-size: clamp(3.5rem, 6.8vw, 7.6rem);
 }
 
 .founder-card {
   position: relative;
-  width: min(100%, 720px);
+  width: min(100%, 940px);
   justify-self: end;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-columns: minmax(230px, 0.46fr) minmax(0, 0.54fr);
   overflow: hidden;
   border: 1px solid var(--line);
   background:
@@ -644,8 +647,8 @@ section {
 
 .founder-image-wrap {
   position: relative;
-  height: clamp(260px, 34vw, 390px);
-  min-height: 0;
+  min-height: clamp(360px, 39vw, 520px);
+  height: 100%;
   overflow: hidden;
   background: var(--surface);
 }
@@ -671,8 +674,10 @@ section {
   position: relative;
   z-index: 1;
   display: grid;
+  align-content: center;
   gap: 14px;
-  padding: clamp(24px, 4vw, 38px);
+  min-width: 0;
+  padding: clamp(24px, 3.4vw, 42px);
 }
 
 .founder-copy span {
@@ -686,9 +691,9 @@ section {
 .founder-copy h3 {
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(3rem, 5.6vw, 6.2rem);
+  font-size: clamp(2.8rem, 4.9vw, 5.4rem);
   font-weight: 400;
-  line-height: 0.85;
+  line-height: 0.88;
   text-transform: uppercase;
 }
 
@@ -700,7 +705,8 @@ section {
 .founder-copy p {
   margin: 0;
   color: var(--muted);
-  line-height: 1.7;
+  font-size: clamp(0.95rem, 1.1vw, 1.08rem);
+  line-height: 1.62;
 }
 
 .founder-socials {
@@ -1083,6 +1089,10 @@ section {
   .founder-section .section-copy h2 {
     max-width: 720px;
   }
+
+  .founder-image-wrap {
+    min-height: clamp(330px, 50vw, 460px);
+  }
 }
 
 @media (max-width: 760px) {
@@ -1137,22 +1147,35 @@ section {
 
   .founder-section {
     gap: 28px;
+    min-height: 0;
+    padding-block: 70px;
   }
 
   .founder-section .section-copy h2 {
-    font-size: clamp(3.1rem, 18vw, 5.2rem);
+    font-size: clamp(3rem, 15vw, 4.9rem);
+  }
+
+  .founder-card {
+    grid-template-columns: 1fr;
   }
 
   .founder-image-wrap {
-    height: min(76vw, 330px);
+    min-height: 0;
+    height: min(72vw, 310px);
   }
 
   .founder-copy {
     padding: 22px;
+    gap: 11px;
   }
 
   .founder-copy h3 {
-    font-size: clamp(2.8rem, 16vw, 4.8rem);
+    font-size: clamp(2.45rem, 13vw, 4.1rem);
+  }
+
+  .founder-copy p {
+    font-size: 0.96rem;
+    line-height: 1.55;
   }
 }
 

@@ -364,11 +364,13 @@ const uploadFile = (file) => new Promise((resolve, reject) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: file.name, type: file.type, data: reader.result }),
     });
-    response.ok ? resolve(response.json()) : reject(new Error("Upload failed"));
+    response.ok ? resolve(response.json().then((payload) => ({ ...payload, dataUrl: reader.result }))) : reject(new Error("Upload failed"));
   };
   reader.onerror = reject;
   reader.readAsDataURL(file);
 });
+
+const shouldInlineFounderMedia = () => !["localhost", "127.0.0.1"].includes(location.hostname);
 
 const bindActions = () => {
   $("[data-tabs]").addEventListener("click", (event) => {
@@ -400,11 +402,20 @@ const bindActions = () => {
   $("[data-founder-upload]").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const uploaded = await uploadFile(file);
-    site.founder.image = uploaded.url;
-    bindInputs();
-    renderFounder();
-    toast("Founder image uploaded");
+    try {
+      toast("Uploading founder image...");
+      const uploaded = await uploadFile(file);
+      site.founder ||= { name: "", role: "", bio: "", image: "", socials: [] };
+      site.founder.image = shouldInlineFounderMedia() ? uploaded.dataUrl : uploaded.url;
+      bindInputs();
+      renderFounder();
+      const saved = await saveSite(true);
+      toast(saved ? "Founder image updated live" : "Founder image uploaded. Click Save Changes.");
+    } catch (error) {
+      toast(error.message || "Founder image upload failed");
+    } finally {
+      event.target.value = "";
+    }
   });
   $("[data-add-video]").onclick = () => {
     site.videos ||= [];
