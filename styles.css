@@ -181,11 +181,18 @@ select {
   align-items: end;
   overflow: hidden;
   padding: 128px clamp(18px, 6vw, 86px) 62px;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 72% 36%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 20rem),
+    radial-gradient(circle at 34% 70%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 24rem),
+    #030307;
 }
 
 .hero-media,
 .hero-filter,
-.particle-canvas {
+.particle-canvas,
+.luxury-scene,
+.luxury-depth {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -202,25 +209,74 @@ select {
 }
 
 .hero-media {
+  z-index: 0;
+  opacity: 0.52;
   transform: scale(1.05);
   animation: cinematicDrift 14s ease-in-out infinite alternate;
 }
 
+.luxury-scene {
+  z-index: 1;
+  opacity: 0.92;
+  mix-blend-mode: screen;
+}
+
+.luxury-depth {
+  z-index: 2;
+  pointer-events: none;
+  perspective: 900px;
+  overflow: hidden;
+}
+
+.luxury-depth span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(84vw, 1180px);
+  aspect-ratio: 16 / 8;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  opacity: 0.32;
+  transform: translate(-50%, -50%) rotateX(68deg) rotateZ(var(--rz, 0deg));
+  animation: luxuryOrbit 12s linear infinite;
+  box-shadow:
+    0 0 70px color-mix(in srgb, var(--accent) 20%, transparent),
+    inset 0 0 48px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.luxury-depth span:nth-child(2) {
+  --rz: 42deg;
+  width: min(72vw, 940px);
+  animation-duration: 16s;
+  animation-direction: reverse;
+  border-color: color-mix(in srgb, var(--primary) 32%, transparent);
+}
+
+.luxury-depth span:nth-child(3) {
+  --rz: -28deg;
+  width: min(58vw, 740px);
+  animation-duration: 20s;
+  opacity: 0.24;
+  border-color: color-mix(in srgb, var(--secondary) 34%, transparent);
+}
+
 .hero-filter {
+  z-index: 3;
   backdrop-filter: blur(var(--hero-blur, 2px));
   background:
-    linear-gradient(90deg, rgba(5, 5, 9, calc(var(--hero-dark, 72) / 100)), rgba(5, 5, 9, 0.18)),
-    linear-gradient(0deg, rgba(5, 5, 9, 0.92), transparent 46%);
+    radial-gradient(circle at 68% 42%, rgba(255, 255, 255, 0.08), transparent 18rem),
+    linear-gradient(90deg, rgba(5, 5, 9, calc(var(--hero-dark, 72) / 100)), rgba(5, 5, 9, 0.1)),
+    linear-gradient(0deg, rgba(5, 5, 9, 0.94), transparent 50%);
 }
 
 .particle-canvas {
-  z-index: 1;
+  z-index: 4;
   opacity: 0.7;
 }
 
 .camera-ui {
   position: absolute;
-  z-index: 2;
+  z-index: 5;
   inset: 110px clamp(18px, 6vw, 86px) auto auto;
   display: grid;
   gap: 5px;
@@ -233,8 +289,13 @@ select {
 
 .hero-inner {
   position: relative;
-  z-index: 3;
+  z-index: 6;
   max-width: 1120px;
+  padding: clamp(18px, 3vw, 34px);
+  border-left: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  background: linear-gradient(90deg, rgba(255,255,255,0.075), rgba(255,255,255,0.018) 62%, transparent);
+  box-shadow: -28px 0 70px color-mix(in srgb, var(--accent) 9%, transparent);
+  backdrop-filter: blur(4px);
 }
 
 .eyebrow {
@@ -310,6 +371,7 @@ h2 {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   box-shadow: 0 20px 60px color-mix(in srgb, var(--primary) 26%, transparent);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
 }
 
 .button.ghost {
@@ -317,6 +379,11 @@ h2 {
   background: rgba(255, 255, 255, 0.07);
   box-shadow: none;
   backdrop-filter: blur(18px);
+}
+
+.button:hover {
+  border-color: color-mix(in srgb, var(--accent) 70%, white);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .marquee-section {
@@ -1145,6 +1212,20 @@ section {
     flex-direction: column;
   }
 
+  .luxury-scene {
+    opacity: 0.68;
+  }
+
+  .luxury-depth span {
+    width: 118vw;
+    opacity: 0.2;
+  }
+
+  .hero-inner {
+    padding: 18px;
+    border-left-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
   .founder-section {
     gap: 28px;
     min-height: 0;
@@ -1192,6 +1273,11 @@ section {
 @keyframes cinematicDrift {
   from { transform: scale(1.04) translate3d(-1%, -1%, 0); }
   to { transform: scale(1.16) translate3d(2%, 2%, 0); }
+}
+
+@keyframes luxuryOrbit {
+  from { transform: translate(-50%, -50%) rotateX(68deg) rotateZ(var(--rz, 0deg)); }
+  to { transform: translate(-50%, -50%) rotateX(68deg) rotateZ(calc(var(--rz, 0deg) + 360deg)); }
 }
 
 @keyframes iconPulse {

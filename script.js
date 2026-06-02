@@ -59,6 +59,7 @@ const applyBranding = ({ branding, hero, animations }) => {
   document.body.classList.toggle("no-motion", !animations.enabled);
   $("[data-cursor]").style.display = animations.cursorGlow ? "block" : "none";
   $("[data-particles]").style.display = animations.particles ? "block" : "none";
+  $("[data-luxury-scene]").style.display = animations.enabled ? "block" : "none";
 };
 
 const renderSite = () => {
@@ -273,6 +274,125 @@ const bindParticles = () => {
   draw();
 };
 
+const bindLuxuryScene = () => {
+  const canvas = $("[data-luxury-scene]");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const pointer = { x: 0, y: 0 };
+  const panels = Array.from({ length: 26 }, (_, index) => ({
+    angle: (index / 26) * Math.PI * 2,
+    radius: 0.38 + Math.random() * 0.28,
+    height: Math.random() * 0.7 - 0.35,
+    speed: 0.18 + Math.random() * 0.28,
+    size: 0.018 + Math.random() * 0.034,
+    phase: Math.random() * Math.PI * 2,
+  }));
+
+  const resize = () => {
+    canvas.width = innerWidth * devicePixelRatio;
+    canvas.height = innerHeight * devicePixelRatio;
+    canvas.style.width = `${innerWidth}px`;
+    canvas.style.height = `${innerHeight}px`;
+  };
+
+  const project = (x, y, z) => {
+    const depth = 1.6 / (1.6 + z);
+    return {
+      x: canvas.width * (0.66 + (x + pointer.x * 0.04) * depth),
+      y: canvas.height * (0.46 + (y + pointer.y * 0.03) * depth),
+      scale: depth,
+    };
+  };
+
+  const line = (points, color, width) => {
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width * devicePixelRatio;
+    ctx.stroke();
+  };
+
+  const drawGrid = (time) => {
+    for (let i = 0; i < 22; i += 1) {
+      const z = i / 7 + ((time * 0.00035) % 0.14);
+      const left = project(-1.5, 0.48, z);
+      const right = project(0.7, 0.48, z);
+      line([left, right], "rgba(0,245,212,0.11)", 1);
+    }
+    for (let i = -12; i <= 8; i += 1) {
+      const near = project(i * 0.095, 0.52, 0.1);
+      const far = project(i * 0.28, 0.5, 3.2);
+      line([near, far], "rgba(255,255,255,0.055)", 1);
+    }
+  };
+
+  const drawRibbons = (time) => {
+    for (let ribbon = 0; ribbon < 4; ribbon += 1) {
+      const points = [];
+      const offset = ribbon * Math.PI * 0.52;
+      for (let i = 0; i < 140; i += 1) {
+        const t = i / 139;
+        const angle = t * Math.PI * 2.5 + time * 0.00042 + offset;
+        const radius = 0.26 + Math.sin(t * Math.PI * 2 + time * 0.00032 + ribbon) * 0.07;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle * 0.74 + offset) * 0.19 - 0.03;
+        const z = Math.sin(angle) * 0.42 + 0.7 + t * 0.2;
+        points.push(project(x, y, z));
+      }
+      const hue = ribbon % 2 ? "255,77,46" : "0,245,212";
+      line(points, `rgba(${hue},0.22)`, 1.8);
+    }
+  };
+
+  const drawPanels = (time) => {
+    panels.forEach((panel) => {
+      const angle = panel.angle + time * 0.00018 * panel.speed;
+      const x = Math.cos(angle) * panel.radius;
+      const y = panel.height + Math.sin(time * 0.001 + panel.phase) * 0.025;
+      const z = Math.sin(angle) * 0.62 + 0.85;
+      const point = project(x, y, z);
+      const size = Math.max(8, canvas.width * panel.size * point.scale);
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      ctx.rotate(angle + time * 0.00016);
+      ctx.fillStyle = "rgba(255,255,255,0.055)";
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 1 * devicePixelRatio;
+      ctx.fillRect(-size / 2, -size * 0.32, size, size * 0.64);
+      ctx.strokeRect(-size / 2, -size * 0.32, size, size * 0.64);
+      ctx.restore();
+    });
+  };
+
+  const draw = (time = 0) => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const gradient = ctx.createRadialGradient(canvas.width * 0.7, canvas.height * 0.42, 0, canvas.width * 0.7, canvas.height * 0.42, canvas.width * 0.68);
+    gradient.addColorStop(0, "rgba(0,245,212,0.16)");
+    gradient.addColorStop(0.38, "rgba(139,92,246,0.08)");
+    gradient.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawGrid(time);
+    ctx.shadowBlur = 26 * devicePixelRatio;
+    ctx.shadowColor = "rgba(0,245,212,0.5)";
+    drawRibbons(time);
+    ctx.shadowBlur = 18 * devicePixelRatio;
+    ctx.shadowColor = "rgba(255,77,46,0.28)";
+    drawPanels(time);
+    requestAnimationFrame(draw);
+  };
+
+  addEventListener("pointermove", (event) => {
+    pointer.x = event.clientX / innerWidth - 0.5;
+    pointer.y = event.clientY / innerHeight - 0.5;
+  }, { passive: true });
+  addEventListener("resize", resize);
+  resize();
+  draw();
+};
+
 const bindVideos = () => {
   const modal = $("[data-video-modal]");
   const frame = $("[data-modal-frame]");
@@ -316,6 +436,7 @@ const boot = async () => {
   bindChrome();
   bindClock();
   bindParticles();
+  bindLuxuryScene();
   site = await fetch("/api/site").then((response) => response.json());
   renderSite();
   setTimeout(() => $("[data-loader]").classList.add("is-hidden"), 700);
