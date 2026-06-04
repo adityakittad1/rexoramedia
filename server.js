@@ -347,7 +347,7 @@ const createSignedUploadToken = async ({ name, type, folder }) => {
   if (supabaseUrl_field) {
     uploadUrl = supabaseUrl_field.startsWith("http")
       ? supabaseUrl_field
-      : `${supabaseUrl}${supabaseUrl_field}`;
+      : `${supabaseUrl}/storage/v1${supabaseUrl_field}`;
   } else {
     // Fallback: construct upload URL manually using token as query param
     uploadUrl = `${supabaseUrl}/storage/v1/object/upload/sign/${supabaseBucket}/${storagePath}?token=${encodeURIComponent(token)}`;
