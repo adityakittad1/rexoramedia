@@ -1626,41 +1626,54 @@ section {
   color: color-mix(in srgb, var(--muted) 78%, transparent);
 }
 
-.whatsapp-float {
+.schedule-float {
   position: fixed;
-  right: 22px;
-  bottom: 22px;
+  right: clamp(14px, 2vw, 28px);
+  bottom: clamp(14px, 2vw, 28px);
   z-index: 80;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 58px;
-  padding: 10px 16px 10px 10px;
-  border: 1px solid color-mix(in srgb, #25d366 65%, white);
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 18px 10px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, white);
   border-radius: 999px;
   color: var(--text);
-  background: rgba(12, 28, 20, 0.58);
-  box-shadow: 0 0 34px rgba(37, 211, 102, 0.38);
-  backdrop-filter: blur(18px);
-  animation: whatsappPulse 1.8s ease-in-out infinite alternate;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.055)),
+    rgba(5, 5, 9, 0.62);
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.38),
+    0 0 42px color-mix(in srgb, var(--accent) 18%, transparent);
+  backdrop-filter: blur(20px);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
 }
 
-.whatsapp-float span {
+.schedule-float:hover {
+  border-color: color-mix(in srgb, var(--primary) 58%, white);
+  box-shadow:
+    0 26px 90px rgba(0, 0, 0, 0.42),
+    0 0 58px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.schedule-float span {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   border-radius: 50%;
-  color: #06140b;
-  background: #25d366;
+  color: #050509;
+  background: linear-gradient(135deg, var(--accent), var(--primary));
   font-size: 0.72rem;
   font-weight: 900;
+  text-transform: uppercase;
 }
 
-.whatsapp-float strong {
+.schedule-float strong {
   font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .social-row a {
@@ -1840,12 +1853,16 @@ section {
   }
 
   .luxury-scene {
-    opacity: 0.68;
+    opacity: 0.48;
   }
 
   .luxury-depth span {
     width: 118vw;
-    opacity: 0.2;
+    opacity: 0.14;
+  }
+
+  .particle-canvas {
+    opacity: 0.34;
   }
 
   .hero-inner {
@@ -1902,11 +1919,46 @@ section {
     font-size: 1.08rem;
   }
 
-  .whatsapp-float {
+  .schedule-float {
     right: 14px;
     bottom: 14px;
-    min-height: 52px;
-    padding-right: 13px;
+    min-height: 54px;
+    padding: 8px 13px 8px 8px;
+  }
+
+  .schedule-float span {
+    width: 36px;
+    height: 36px;
+    font-size: 0.62rem;
+  }
+
+  .schedule-float strong {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (min-width: 1600px) {
+  .hero-inner,
+  .section-copy,
+  .trust-copy,
+  .founder-section,
+  .motion-lab,
+  .contact-section,
+  .site-footer {
+    max-width: 1680px;
+    margin-inline: auto;
+  }
+
+  .services-grid,
+  .work-grid,
+  .testimonial-grid,
+  .team-grid,
+  .video-grid,
+  .trust-logos,
+  .trust-stats {
+    max-width: 1680px;
+    margin-inline: auto;
   }
 }
 
@@ -1937,11 +1989,6 @@ section {
 
 @keyframes orbitSpin {
   to { transform: rotate(360deg); }
-}
-
-@keyframes whatsappPulse {
-  from { transform: translateY(0) scale(1); }
-  to { transform: translateY(-5px) scale(1.03); }
 }
 
 @keyframes secretOpen {

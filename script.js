@@ -83,8 +83,10 @@ const renderSite = () => {
   $("[data-contact-phone]").textContent = contact.phone;
   $("[data-contact-phone]").href = `tel:${contact.phone.replace(/\s/g, "")}`;
   $("[data-contact-location]").textContent = contact.location;
-  const whatsappLink = `https://wa.me/91${String(contact.whatsapp || contact.phone || "").replace(/\D/g, "").replace(/^91/, "")}?text=${encodeURIComponent(contact.whatsappMessage || "Hello Rexora Media, I want to know more about your services.")}`;
-  $("[data-whatsapp]").href = whatsappLink;
+  const whatsappNumber = String(contact.whatsapp || contact.phone || "").replace(/\D/g, "").replace(/^91/, "");
+  const scheduleMessage = contact.scheduleMessage || "Hello Rexora Media, I want to schedule a call for my brand.";
+  const scheduleLink = contact.scheduleUrl || `https://wa.me/91${whatsappNumber}?text=${encodeURIComponent(scheduleMessage)}`;
+  $$("[data-schedule-call]").forEach((link) => { link.href = scheduleLink; });
   $("[data-instagram-cta]").href = contact.instagram;
   $("[data-socials]").innerHTML = ["instagram", "youtube", "linkedin"]
     .filter((key) => contact[key])
@@ -274,10 +276,12 @@ const bindClock = () => {
 const bindParticles = () => {
   const canvas = $("[data-particles]");
   const ctx = canvas.getContext("2d");
-  const dots = Array.from({ length: 64 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 2 + 0.6, s: Math.random() * 0.35 + 0.08 }));
+  const pixelRatio = Math.min(devicePixelRatio || 1, innerWidth < 760 ? 1.15 : 1.6);
+  const dotCount = innerWidth < 760 ? 20 : innerWidth < 1200 ? 38 : 54;
+  const dots = Array.from({ length: dotCount }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.6 + 0.5, s: Math.random() * 0.24 + 0.06 }));
   const resize = () => {
-    canvas.width = innerWidth * devicePixelRatio;
-    canvas.height = innerHeight * devicePixelRatio;
+    canvas.width = innerWidth * pixelRatio;
+    canvas.height = innerHeight * pixelRatio;
   };
   const draw = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -285,8 +289,8 @@ const bindParticles = () => {
       dot.y -= dot.s / 1000;
       if (dot.y < -0.05) dot.y = 1.05;
       ctx.beginPath();
-      ctx.arc(dot.x * canvas.width, dot.y * canvas.height, dot.r * devicePixelRatio, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.42)";
+      ctx.arc(dot.x * canvas.width, dot.y * canvas.height, dot.r * pixelRatio, 0, Math.PI * 2);
+      ctx.fillStyle = innerWidth < 760 ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.34)";
       ctx.fill();
     });
     requestAnimationFrame(draw);
@@ -301,8 +305,9 @@ const bindLuxuryScene = () => {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const pointer = { x: 0, y: 0 };
-  const panels = Array.from({ length: 26 }, (_, index) => ({
-    angle: (index / 26) * Math.PI * 2,
+  const panelCount = innerWidth < 760 ? 10 : innerWidth < 1200 ? 18 : 24;
+  const panels = Array.from({ length: panelCount }, (_, index) => ({
+    angle: (index / panelCount) * Math.PI * 2,
     radius: 0.38 + Math.random() * 0.28,
     height: Math.random() * 0.7 - 0.35,
     speed: 0.18 + Math.random() * 0.28,
@@ -311,8 +316,9 @@ const bindLuxuryScene = () => {
   }));
 
   const resize = () => {
-    canvas.width = innerWidth * devicePixelRatio;
-    canvas.height = innerHeight * devicePixelRatio;
+    const ratio = Math.min(devicePixelRatio || 1, innerWidth < 760 ? 1.15 : 1.6);
+    canvas.width = innerWidth * ratio;
+    canvas.height = innerHeight * ratio;
     canvas.style.width = `${innerWidth}px`;
     canvas.style.height = `${innerHeight}px`;
   };
@@ -337,13 +343,16 @@ const bindLuxuryScene = () => {
   };
 
   const drawGrid = (time) => {
-    for (let i = 0; i < 22; i += 1) {
+    const horizontalLines = innerWidth < 760 ? 10 : 18;
+    const verticalStart = innerWidth < 760 ? -6 : -12;
+    const verticalEnd = innerWidth < 760 ? 4 : 8;
+    for (let i = 0; i < horizontalLines; i += 1) {
       const z = i / 7 + ((time * 0.00035) % 0.14);
       const left = project(-1.5, 0.48, z);
       const right = project(0.7, 0.48, z);
       line([left, right], "rgba(0,245,212,0.11)", 1);
     }
-    for (let i = -12; i <= 8; i += 1) {
+    for (let i = verticalStart; i <= verticalEnd; i += 1) {
       const near = project(i * 0.095, 0.52, 0.1);
       const far = project(i * 0.28, 0.5, 3.2);
       line([near, far], "rgba(255,255,255,0.055)", 1);
@@ -351,11 +360,13 @@ const bindLuxuryScene = () => {
   };
 
   const drawRibbons = (time) => {
-    for (let ribbon = 0; ribbon < 4; ribbon += 1) {
+    const ribbonCount = innerWidth < 760 ? 2 : 4;
+    const segments = innerWidth < 760 ? 76 : 124;
+    for (let ribbon = 0; ribbon < ribbonCount; ribbon += 1) {
       const points = [];
       const offset = ribbon * Math.PI * 0.52;
-      for (let i = 0; i < 140; i += 1) {
-        const t = i / 139;
+      for (let i = 0; i < segments; i += 1) {
+        const t = i / (segments - 1);
         const angle = t * Math.PI * 2.5 + time * 0.00042 + offset;
         const radius = 0.26 + Math.sin(t * Math.PI * 2 + time * 0.00032 + ribbon) * 0.07;
         const x = Math.cos(angle) * radius;
