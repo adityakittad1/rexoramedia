@@ -277,7 +277,13 @@ const login = async (request, response) => {
     return sendJson(response, 500, { ok: false, message: "Admin auth environment variables are not configured." });
   }
   const rawBody = await getBody(request);
-  const { email, password } = JSON.parse(rawBody || "{}");
+  let credentials = {};
+  try {
+    credentials = JSON.parse(rawBody || "{}");
+  } catch {
+    credentials = Object.fromEntries(new URLSearchParams(rawBody || ""));
+  }
+  const { email, password } = credentials;
   const isValid = normalizeEmail(email) === normalizeEmail(adminEmail) && hashPassword(password || "") === configuredPasswordHash;
   if (!isValid) return sendJson(response, 403, { ok: false, message: "Invalid login" });
   const token = makeToken();
