@@ -71,6 +71,18 @@
             <label>Overlay Blur<input type="range" min="0" max="18" data-bind-number="hero.overlayBlur" /></label>
           </div>
           <div class="youtube-preview" data-youtube-preview></div>
+          <div class="panel-title-row">
+            <div>
+              <h3>Cinematic Hero Videos</h3>
+              <p>Upload landscape MP4/WebM clips for the first-screen background. They crossfade automatically and stop after the hero scrolls away.</p>
+            </div>
+            <label class="mini-upload">
+              Upload Hero Videos
+              <input type="file" data-hero-video-upload accept="video/mp4,video/webm,video/ogg" multiple />
+            </label>
+            <button type="button" data-add-hero-video>Add Video URL</button>
+          </div>
+          <div class="editable-list hero-video-editor" data-hero-videos-editor></div>
         </div>
 
         <div class="panel-section" data-panel="services">
@@ -84,8 +96,15 @@
         <div class="panel-section" data-panel="founder">
           <h2>Meet Our Founder</h2>
           <div class="form-grid">
+            <label>Founder Media Type
+              <select data-bind="founder.mediaType">
+                <option value="image">Founder Image</option>
+                <option value="video">Founder Video</option>
+              </select>
+            </label>
             <label>Founder Image URL<input data-bind="founder.image" /></label>
-            <label>Upload Founder Image<input type="file" data-founder-upload accept="image/*,video/*" /></label>
+            <label>Founder Video URL<input data-bind="founder.video" /></label>
+            <label>Upload Founder Media<input type="file" data-founder-upload accept="image/*,video/*" /></label>
             <label>Founder Name<input data-bind="founder.name" /></label>
             <label>Designation<input data-bind="founder.role" /></label>
             <label class="wide-field">Description<textarea rows="5" data-bind="founder.bio"></textarea></label>

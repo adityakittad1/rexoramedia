@@ -176,7 +176,9 @@ select {
 
 .hero {
   position: relative;
+  height: 100svh;
   min-height: 100svh;
+  max-height: 100svh;
   display: grid;
   align-items: end;
   overflow: hidden;
@@ -213,6 +215,58 @@ select {
   opacity: 0.52;
   transform: scale(1.05);
   animation: cinematicDrift 14s ease-in-out infinite alternate;
+}
+
+.hero-media.is-video-system {
+  opacity: 0.72;
+  transform: none;
+  animation: none;
+}
+
+.hero-video {
+  position: absolute;
+  inset: -1%;
+  width: 102%;
+  height: 102%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  filter: blur(14px) saturate(0.96) brightness(0.78);
+  transform: scale(1.035);
+  transition:
+    opacity 2200ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 2200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 6200ms linear;
+  will-change: opacity, filter, transform;
+}
+
+.hero-video.is-active {
+  opacity: 1;
+  filter: blur(0) saturate(1.08) brightness(0.92);
+  transform: scale(1.085);
+}
+
+.hero-video.is-leaving {
+  opacity: 0;
+  filter: blur(20px) saturate(1.18) brightness(1.08);
+  transform: scale(1.13);
+}
+
+.hero-video-bloom {
+  position: absolute;
+  inset: -8%;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 58% 42%, color-mix(in srgb, var(--accent) 36%, transparent), transparent 22rem),
+    radial-gradient(circle at 28% 76%, color-mix(in srgb, var(--primary) 30%, transparent), transparent 24rem);
+  mix-blend-mode: screen;
+  filter: blur(28px);
+  transition: opacity 1800ms ease;
+}
+
+.hero-media.is-transitioning .hero-video-bloom {
+  opacity: 0.52;
 }
 
 .luxury-scene {
@@ -264,9 +318,20 @@ select {
   z-index: 3;
   backdrop-filter: blur(var(--hero-blur, 2px));
   background:
+    radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,0.48) 100%),
     radial-gradient(circle at 68% 42%, rgba(255, 255, 255, 0.08), transparent 18rem),
     linear-gradient(90deg, rgba(5, 5, 9, calc(var(--hero-dark, 72) / 100)), rgba(5, 5, 9, 0.1)),
     linear-gradient(0deg, rgba(5, 5, 9, 0.94), transparent 50%);
+}
+
+.hero-filter::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-radial-gradient(circle at 18% 18%, rgba(255,255,255,0.045) 0 1px, transparent 1px 5px);
+  opacity: 0.32;
+  mix-blend-mode: overlay;
 }
 
 .particle-canvas {
@@ -714,8 +779,9 @@ section {
 
 .founder-image-wrap {
   position: relative;
-  min-height: clamp(360px, 39vw, 520px);
+  min-height: clamp(360px, 34vw, 540px);
   height: 100%;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--surface);
 }
@@ -729,6 +795,11 @@ section {
   object-position: center top;
   filter: saturate(1.08) contrast(1.08);
   transition: transform 700ms ease, filter 700ms ease;
+}
+
+.founder-image-wrap.is-video video {
+  object-fit: cover;
+  object-position: center;
 }
 
 .founder-card:hover .founder-image-wrap img,
@@ -1223,21 +1294,44 @@ section {
 }
 
 .founder-section {
-  grid-template-columns: minmax(320px, 0.48fr) minmax(360px, 0.52fr);
+  grid-template-columns: minmax(300px, 0.42fr) minmax(420px, 0.58fr);
   min-height: 0;
-  padding-top: clamp(74px, 8vw, 118px);
-  padding-bottom: clamp(78px, 8vw, 124px);
+  padding-top: clamp(62px, 7vw, 96px);
+  padding-bottom: clamp(64px, 7vw, 104px);
   border-top: 1px solid rgba(255,255,255,0.07);
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
+@supports (height: 100dvh) {
+  .hero {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
+}
+
 .founder-spotlight {
-  width: min(100%, 620px);
-  min-height: clamp(480px, 46vw, 690px);
+  width: min(100%, 520px);
+  min-height: 0;
+  aspect-ratio: 4 / 5;
   justify-self: start;
   border-radius: 2px;
   border: 1px solid rgba(255,255,255,0.12);
   box-shadow: 0 38px 110px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.founder-spotlight.is-video {
+  aspect-ratio: 16 / 10;
+  width: min(100%, 620px);
+}
+
+.founder-spotlight.is-image img {
+  object-position: center top;
+}
+
+.founder-spotlight.is-video video {
+  object-fit: cover;
+  object-position: center;
 }
 
 .founder-spotlight::after {
@@ -1877,8 +1971,16 @@ section {
   }
 
   .founder-spotlight {
+    width: min(100%, 380px);
     min-height: 0;
-    height: min(78vw, 410px);
+    height: auto;
+    aspect-ratio: 4 / 5;
+    justify-self: center;
+  }
+
+  .founder-spotlight.is-video {
+    width: 100%;
+    aspect-ratio: 16 / 10;
   }
 
   .founder-copy {

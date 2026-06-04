@@ -9,6 +9,7 @@ const port = Number(process.env.PORT || 4174);
 const isVercel = Boolean(process.env.VERCEL);
 const dataDir = path.join(root, "data");
 const uploadDir = isVercel ? path.join(os.tmpdir(), "rexora-uploads") : path.join(root, "uploads");
+const maxPayloadBytes = Number(process.env.MAX_UPLOAD_BYTES || 220_000_000);
 let runtimeSite = null;
 
 const types = {
@@ -62,7 +63,7 @@ const getBody = (request) =>
     let body = "";
     request.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 18_000_000) {
+      if (body.length > maxPayloadBytes) {
         reject(new Error("Payload too large"));
         request.destroy();
       }

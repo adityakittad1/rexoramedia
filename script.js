@@ -4,10 +4,11 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 let site = null;
 let typingIndex = 0;
 let typingTimer = null;
+let heroVideoTeardown = null;
 
 const mediaMarkup = (url, alt = "") => {
   if (!url) return "";
-  if (/\.(mp4|webm|ogg)$/i.test(url)) {
+  if (/^(data:video\/|blob:)/i.test(url) || /\.(mp4|webm|ogg)$/i.test(url)) {
     return `<video src="${url}" autoplay muted loop playsinline></video>`;
   }
   return `<img src="${url}" alt="${alt}" loading="lazy" decoding="async" />`;
@@ -41,6 +42,108 @@ const youtubeEmbed = (url, index) => {
   return `https://www.youtube.com/embed/${id}?${params.toString()}`;
 };
 
+const renderHeroMedia = (hero) => {
+  const holder = $("[data-hero-media]");
+  const videos = (hero.videos || []).filter((video) => video.visible !== false && video.url);
+  if (heroVideoTeardown) {
+    heroVideoTeardown();
+    heroVideoTeardown = null;
+  }
+
+  if (!videos.length) {
+    const heroImage = hero.youtubeUrl ? youtubeThumb(hero.youtubeUrl) : hero.backgroundMedia;
+    holder.className = "hero-media";
+    holder.innerHTML = mediaMarkup(heroImage, "Rexora hero media");
+    return heroImage;
+  }
+
+  holder.className = "hero-media is-video-system";
+  holder.innerHTML = `
+    <video class="hero-video is-active" data-hero-video-a muted playsinline preload="auto"></video>
+    <video class="hero-video" data-hero-video-b muted playsinline preload="auto"></video>
+    <div class="hero-video-bloom" aria-hidden="true"></div>
+  `;
+  bindHeroVideoSystem(videos);
+  return videos[0].poster || videos[0].url;
+};
+
+const bindHeroVideoSystem = (videos) => {
+  const hero = $(".hero");
+  const holder = $("[data-hero-media]");
+  const slots = [$("[data-hero-video-a]"), $("[data-hero-video-b]")];
+  let active = 0;
+  let index = 0;
+  let transitionTimer = null;
+  let observer = null;
+  let inView = true;
+
+  const loadVideo = (element, item) => {
+    element.src = item.url;
+    element.poster = item.poster || "";
+    element.loop = videos.length === 1;
+    element.muted = true;
+    element.playsInline = true;
+    element.preload = "auto";
+    element.load();
+  };
+
+  const playActive = () => {
+    if (!inView) return;
+    slots[active].play().catch(() => {});
+  };
+
+  const preloadNext = () => {
+    if (videos.length < 2) return;
+    const nextIndex = (index + 1) % videos.length;
+    loadVideo(slots[1 - active], videos[nextIndex]);
+  };
+
+  const transitionNext = () => {
+    if (videos.length < 2 || !inView) return;
+    const leaving = slots[active];
+    const entering = slots[1 - active];
+    index = (index + 1) % videos.length;
+    holder.classList.add("is-transitioning");
+    entering.currentTime = 0;
+    entering.classList.add("is-active");
+    entering.play().catch(() => {});
+    leaving.classList.add("is-leaving");
+    leaving.classList.remove("is-active");
+    clearTimeout(transitionTimer);
+    transitionTimer = setTimeout(() => {
+      leaving.pause();
+      leaving.classList.remove("is-leaving");
+      active = 1 - active;
+      holder.classList.remove("is-transitioning");
+      preloadNext();
+    }, 2200);
+  };
+
+  loadVideo(slots[active], videos[index]);
+  preloadNext();
+  playActive();
+  slots.forEach((slot) => slot.addEventListener("ended", transitionNext));
+
+  observer = new IntersectionObserver((entries) => {
+    inView = entries[0]?.isIntersecting ?? true;
+    slots.forEach((slot, slotIndex) => {
+      if (inView && slotIndex === active) slot.play().catch(() => {});
+      if (!inView) slot.pause();
+    });
+  }, { threshold: 0.12 });
+  observer.observe(hero);
+
+  heroVideoTeardown = () => {
+    clearTimeout(transitionTimer);
+    if (observer) observer.disconnect();
+    slots.forEach((slot) => {
+      slot.pause();
+      slot.removeAttribute("src");
+      slot.load();
+    });
+  };
+};
+
 const applyBranding = ({ branding, hero, animations }) => {
   const root = document.documentElement;
   root.style.setProperty("--bg", branding.colors.background);
@@ -65,8 +168,7 @@ const applyBranding = ({ branding, hero, animations }) => {
 const renderSite = () => {
   applyBranding(site);
   const { hero, content, stats = [], founder, services, videos = [], testimonials, team, contact } = site;
-  const heroImage = hero.youtubeUrl ? youtubeThumb(hero.youtubeUrl) : hero.backgroundMedia;
-  $("[data-hero-media]").innerHTML = mediaMarkup(heroImage, "Rexora hero media");
+  const heroImage = renderHeroMedia(hero);
   $("[data-reel-media]").innerHTML = mediaMarkup(heroImage, "Rexora reel media");
   $("[data-hero-heading]").textContent = hero.heading;
   $("[data-hero-subheading]").textContent = hero.subheading;
@@ -179,7 +281,12 @@ const renderSite = () => {
   $("[data-videos]").classList.toggle("is-empty", !videos.filter((video) => video.visible).length);
 
   if (founder) {
-    $("[data-founder-image]").innerHTML = mediaMarkup(founder.image, founder.name);
+    const founderType = founder.mediaType === "video" ? "video" : "image";
+    const founderMedia = founderType === "video" ? founder.video : founder.image;
+    const founderFrame = $("[data-founder-image]");
+    founderFrame.classList.toggle("is-video", founderType === "video");
+    founderFrame.classList.toggle("is-image", founderType !== "video");
+    founderFrame.innerHTML = mediaMarkup(founderMedia, founder.name);
     $("[data-founder-name]").textContent = founder.name;
     $("[data-founder-role]").textContent = founder.role;
     $("[data-founder-bio]").textContent = founder.bio;

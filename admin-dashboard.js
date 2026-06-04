@@ -8,8 +8,20 @@ const get = (path) => path.split(".").reduce((value, key) => value?.[key], site)
 const set = (path, value) => {
   const keys = path.split(".");
   const last = keys.pop();
-  const target = keys.reduce((object, key) => object[key], site);
+  const target = keys.reduce((object, key) => {
+    object[key] ||= {};
+    return object[key];
+  }, site);
   target[last] = value;
+};
+
+const normalizeSite = () => {
+  site.hero ||= {};
+  site.hero.videos ||= [];
+  site.founder ||= { name: "", role: "", bio: "", image: "", video: "", mediaType: "image", socials: [] };
+  site.founder.socials ||= [];
+  site.founder.video ||= "";
+  site.founder.mediaType ||= site.founder.video ? "video" : "image";
 };
 
 const toast = (message) => {
@@ -78,6 +90,7 @@ const bindInputs = () => {
       set(input.dataset.bind, input.value);
       if (input.dataset.bind.startsWith("founder.")) renderFounder();
     };
+    input.onchange = input.oninput;
   });
   $$("[data-bind-number]").forEach((input) => {
     input.value = get(input.dataset.bindNumber) ?? 0;
@@ -100,6 +113,54 @@ const renderYoutubePreview = () => {
   $("[data-youtube-preview]").innerHTML = thumb
     ? `<p class="eyebrow">Auto Preview</p><img src="${thumb}" alt="YouTube thumbnail preview" />`
     : `<p>Paste a YouTube link to preview the auto-generated thumbnail.</p>`;
+};
+
+const renderHeroVideos = () => {
+  site.hero ||= {};
+  site.hero.videos ||= [];
+  const editor = $("[data-hero-videos-editor]");
+  editor.innerHTML = site.hero.videos.map((video, index) => `
+    <article class="editor-card hero-video-admin-card" draggable="true" data-hero-video-index="${index}">
+      <div class="hero-video-preview">
+        ${video.url
+          ? `<video src="${video.url}" muted autoplay loop playsinline preload="metadata"></video>`
+          : "<span>Upload a landscape video or paste a URL</span>"}
+      </div>
+      <label>Label<input data-hero-video-field="title" value="${video.title || `Hero Video ${index + 1}`}" /></label>
+      <label>Video URL<input data-hero-video-field="url" value="${video.url || ""}" /></label>
+      <label>Poster URL<input data-hero-video-field="poster" value="${video.poster || ""}" /></label>
+      <label><input type="checkbox" data-hero-video-field="visible" ${video.visible !== false ? "checked" : ""} /> Visible</label>
+      <div class="editor-actions">
+        <button type="button" data-hero-video-up>Move Up</button>
+        <button type="button" data-hero-video-down>Move Down</button>
+        <button type="button" data-hero-video-delete>Delete</button>
+      </div>
+    </article>
+  `).join("");
+
+  $$("[data-hero-video-index]").forEach((card) => {
+    const index = Number(card.dataset.heroVideoIndex);
+    card.querySelectorAll("[data-hero-video-field]").forEach((input) => {
+      const update = () => {
+        const field = input.dataset.heroVideoField;
+        site.hero.videos[index][field] = input.type === "checkbox" ? input.checked : input.value;
+      };
+      input.addEventListener("input", update);
+      input.addEventListener("change", update);
+    });
+    card.querySelector("[data-hero-video-delete]").onclick = () => {
+      site.hero.videos.splice(index, 1);
+      renderHeroVideos();
+    };
+    card.querySelector("[data-hero-video-up]").onclick = () => move(site.hero.videos, index, index - 1, renderHeroVideos);
+    card.querySelector("[data-hero-video-down]").onclick = () => move(site.hero.videos, index, index + 1, renderHeroVideos);
+    card.addEventListener("dragstart", (event) => event.dataTransfer.setData("text/plain", index));
+    card.addEventListener("dragover", (event) => event.preventDefault());
+    card.addEventListener("drop", (event) => {
+      event.preventDefault();
+      move(site.hero.videos, Number(event.dataTransfer.getData("text/plain")), index, renderHeroVideos);
+    });
+  });
 };
 
 const serviceCard = (service, index) => `
@@ -201,15 +262,19 @@ const renderStats = () => {
 };
 
 const renderFounder = () => {
-  site.founder ||= { name: "", role: "", bio: "", image: "", socials: [] };
+  site.founder ||= { name: "", role: "", bio: "", image: "", video: "", mediaType: "image", socials: [] };
+  site.founder.socials ||= [];
+  site.founder.video ||= "";
+  site.founder.mediaType ||= site.founder.video ? "video" : "image";
   const preview = $("[data-founder-preview]");
-  const image = site.founder.image || "";
+  const isVideo = site.founder.mediaType === "video";
+  const media = isVideo ? site.founder.video : site.founder.image;
   preview.innerHTML = `
-    <div class="founder-preview-media">
-      ${/\.(mp4|webm|ogg)$/i.test(image)
-        ? `<video src="${image}" autoplay muted loop playsinline></video>`
-        : image
-          ? `<img src="${image}" alt="${site.founder.name || "Founder"}" />`
+    <div class="founder-preview-media ${isVideo ? "is-video" : "is-image"}">
+      ${media
+        ? isVideo
+          ? `<video src="${media}" autoplay muted loop playsinline></video>`
+          : `<img src="${media}" alt="${site.founder.name || "Founder"}" />`
           : "<span>No founder media selected</span>"}
     </div>
     <div>
@@ -423,20 +488,66 @@ const bindActions = () => {
     site.founder.socials.push({ label: "Social", url: "https://", visible: true });
     renderFounder();
   };
+  $("[data-add-hero-video]").onclick = () => {
+    site.hero ||= {};
+    site.hero.videos ||= [];
+    site.hero.videos.push({
+      id: crypto.randomUUID(),
+      title: `Hero Video ${site.hero.videos.length + 1}`,
+      url: "",
+      poster: "",
+      visible: true,
+    });
+    renderHeroVideos();
+  };
+  $("[data-hero-video-upload]").addEventListener("change", async (event) => {
+    const files = [...(event.target.files || [])];
+    if (!files.length) return;
+    try {
+      toast("Uploading hero video...");
+      site.hero ||= {};
+      site.hero.videos ||= [];
+      for (const file of files) {
+        const uploaded = await uploadFile(file);
+        site.hero.videos.push({
+          id: crypto.randomUUID(),
+          title: file.name.replace(/\.[^.]+$/, ""),
+          url: uploaded.url,
+          poster: "",
+          visible: true,
+        });
+      }
+      renderHeroVideos();
+      const saved = await saveSite(true);
+      toast(saved ? "Hero videos saved" : "Hero videos added. Click Save Changes.");
+    } catch (error) {
+      toast(error.message || "Hero video upload failed");
+    } finally {
+      event.target.value = "";
+    }
+  });
   $("[data-founder-upload]").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      toast("Optimizing founder image...");
-      const optimizedImage = await optimizeFounderImage(file);
-      site.founder ||= { name: "", role: "", bio: "", image: "", socials: [] };
-      site.founder.image = optimizedImage;
+      site.founder ||= { name: "", role: "", bio: "", image: "", video: "", mediaType: "image", socials: [] };
+      if (file.type.startsWith("video/")) {
+        toast("Uploading founder video...");
+        const uploaded = await uploadFile(file);
+        site.founder.mediaType = "video";
+        site.founder.video = uploaded.url;
+      } else {
+        toast("Optimizing founder image...");
+        const optimizedImage = await optimizeFounderImage(file);
+        site.founder.mediaType = "image";
+        site.founder.image = optimizedImage;
+      }
       bindInputs();
       renderFounder();
       const saved = await saveSite(true);
-      toast(saved ? "Founder image saved permanently" : "Founder image optimized. Click Save Changes.");
+      toast(saved ? "Founder media saved permanently" : "Founder media ready. Click Save Changes.");
     } catch (error) {
-      toast(error.message || "Founder image upload failed");
+      toast(error.message || "Founder media upload failed");
     } finally {
       event.target.value = "";
     }
@@ -476,8 +587,10 @@ const boot = async () => {
   const me = await fetch("/api/me").then((response) => response.json());
   if (!me.ok) return location.href = "/admin/login";
   site = await fetch("/api/site").then((response) => response.json());
+  normalizeSite();
   bindInputs();
   bindActions();
+  renderHeroVideos();
   renderServices();
   renderStats();
   renderFounder();
