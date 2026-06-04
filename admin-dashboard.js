@@ -370,7 +370,31 @@ const uploadFile = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-const shouldInlineFounderMedia = () => !["localhost", "127.0.0.1"].includes(location.hostname);
+const optimizeFounderImage = (file) => new Promise((resolve, reject) => {
+  if (!file.type.startsWith("image/")) {
+    reject(new Error("Please upload an image for the founder photo."));
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const image = new Image();
+    image.onload = () => {
+      const maxSize = 1500;
+      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.86));
+    };
+    image.onerror = () => reject(new Error("Could not read founder image."));
+    image.src = reader.result;
+  };
+  reader.onerror = () => reject(new Error("Could not load founder image."));
+  reader.readAsDataURL(file);
+});
 
 const bindActions = () => {
   $("[data-tabs]").addEventListener("click", (event) => {
@@ -403,14 +427,14 @@ const bindActions = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      toast("Uploading founder image...");
-      const uploaded = await uploadFile(file);
+      toast("Optimizing founder image...");
+      const optimizedImage = await optimizeFounderImage(file);
       site.founder ||= { name: "", role: "", bio: "", image: "", socials: [] };
-      site.founder.image = shouldInlineFounderMedia() ? uploaded.dataUrl : uploaded.url;
+      site.founder.image = optimizedImage;
       bindInputs();
       renderFounder();
       const saved = await saveSite(true);
-      toast(saved ? "Founder image updated live" : "Founder image uploaded. Click Save Changes.");
+      toast(saved ? "Founder image saved permanently" : "Founder image optimized. Click Save Changes.");
     } catch (error) {
       toast(error.message || "Founder image upload failed");
     } finally {

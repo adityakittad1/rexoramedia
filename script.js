@@ -10,7 +10,7 @@ const mediaMarkup = (url, alt = "") => {
   if (/\.(mp4|webm|ogg)$/i.test(url)) {
     return `<video src="${url}" autoplay muted loop playsinline></video>`;
   }
-  return `<img src="${url}" alt="${alt}" />`;
+  return `<img src="${url}" alt="${alt}" loading="lazy" decoding="async" />`;
 };
 
 const youtubeThumb = (url) => {
@@ -116,6 +116,23 @@ const renderSite = () => {
     `)
     .join("");
 
+  const featuredWork = services.filter((service) => service.visible).slice(0, 3);
+  $("[data-work-cards]").innerHTML = featuredWork
+    .map((service, index) => `
+      <article class="work-card reveal" data-tilt>
+        <div class="work-media">
+          ${mediaMarkup(service.image, service.title)}
+          <span>${String(index + 1).padStart(2, "0")}</span>
+        </div>
+        <div>
+          <small>${service.category || "Rexora System"}</small>
+          <h3>${service.title}</h3>
+          <p>${service.description}</p>
+        </div>
+      </article>
+    `)
+    .join("");
+
   $("[data-testimonials]").innerHTML = testimonials.map((item) => `
     <article class="testimonial-card reveal">
       <p>${item.quote}</p>
@@ -157,6 +174,7 @@ const renderSite = () => {
       </article>
     `)
     .join("");
+  $("[data-videos]").classList.toggle("is-empty", !videos.filter((video) => video.visible).length);
 
   if (founder) {
     $("[data-founder-image]").innerHTML = mediaMarkup(founder.image, founder.name);
@@ -191,8 +209,12 @@ const observeReveals = () => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) entry.target.classList.add("is-visible");
     });
-  }, { threshold: 0.14 });
-  $$(".reveal").forEach((element) => observer.observe(element));
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.04 });
+  $$(".reveal").forEach((element) => {
+    const rect = element.getBoundingClientRect();
+    if (rect.top < innerHeight * 0.95 && rect.bottom > 0) element.classList.add("is-visible");
+    observer.observe(element);
+  });
 };
 
 const bindTilt = () => {
