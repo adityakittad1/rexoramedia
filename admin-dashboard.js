@@ -442,19 +442,27 @@ const uploadFile = async (file, folder = "media/library") => {
     const payload = await tokenRes.json().catch(() => ({}));
     throw new Error(payload.error || payload.message || "Failed to get upload token");
   }
-  const { token, signedUrl, publicUrl, storagePath } = await tokenRes.json();
+  const tokenData = await tokenRes.json();
+  console.log("[Upload] Token response:", tokenData);
+
+  const { uploadUrl, publicUrl, storagePath } = tokenData;
+  if (!uploadUrl) throw new Error("Server did not return an upload URL. Check Vercel logs.");
 
   // ── Step 2: Upload file directly from browser to Supabase ──
+  // uploadUrl already has the token embedded — just PUT the file to it directly.
   // This completely bypasses Vercel's serverless function — no 4.5MB limit.
-  const uploadRes = await fetch(`${signedUrl}?token=${encodeURIComponent(token)}`, {
+  console.log("[Upload] PUT to uploadUrl:", uploadUrl);
+  const uploadRes = await fetch(uploadUrl, {
     method: "PUT",
     headers: { "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
 
+  const uploadResText = await uploadRes.text().catch(() => "");
+  console.log("[Upload] Supabase PUT response:", uploadRes.status, uploadResText);
+
   if (!uploadRes.ok) {
-    const text = await uploadRes.text().catch(() => "");
-    throw new Error(`Supabase direct upload failed (${uploadRes.status}): ${text}`);
+    throw new Error(`Supabase upload failed (${uploadRes.status}): ${uploadResText}`);
   }
 
   return {

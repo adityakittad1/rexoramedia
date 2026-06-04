@@ -286,28 +286,59 @@ const deleteSupabaseMedia = async (storagePath) => {
 const createSignedUploadToken = async ({ name, type, folder }) => {
   requireSupabase();
   const storagePath = `${safeStorageFolder(folder, type)}/${safeStorageName(name, type)}`;
-  console.log(`SIGNED UPLOAD TOKEN - generating for path: ${storagePath}`);
+  console.log(`SIGNED UPLOAD TOKEN - bucket: ${supabaseBucket}, storagePath: ${storagePath}`);
 
+  // Supabase REST: POST /storage/v1/object/sign/upload/{bucket}/{path_within_bucket}
   const endpoint = `${supabaseUrl}/storage/v1/object/sign/upload/${supabaseBucket}/${storagePath}`;
+  console.log(`SIGNED UPLOAD TOKEN - calling endpoint: ${endpoint}`);
+
   const tokenResponse = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: supabaseHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ expiresIn: 7200 }),
   }, 12_000);
 
-  console.log(`SIGNED UPLOAD TOKEN - Supabase response status: ${tokenResponse.status}`);
+  const responseText = await tokenResponse.text();
+  console.log(`SIGNED UPLOAD TOKEN - status: ${tokenResponse.status}, body: ${responseText}`);
+
   if (!tokenResponse.ok) {
-    const payload = await tokenResponse.json().catch(async () => ({ message: await tokenResponse.text().catch(() => "") }));
-    console.error("SIGNED UPLOAD TOKEN - Error:", payload);
+    let payload;
+    try { payload = JSON.parse(responseText); } catch { payload = { message: responseText }; }
     throw new Error(payload.message || `Supabase signed URL failed with status ${tokenResponse.status}`);
   }
 
-  const { token } = await tokenResponse.json();
-  const signedUrl = `${supabaseUrl}/storage/v1/object/upload/sign/${supabaseBucket}/${storagePath}`;
-  const publicUrl = publicStorageUrl(storagePath);
+  let responseData;
+  try { responseData = JSON.parse(responseText); } catch {
+    throw new Error(`Supabase returned non-JSON response: ${responseText}`);
+  }
 
-  console.log(`SIGNED UPLOAD TOKEN - generated: path=${storagePath}`);
-  return { token, signedUrl, storagePath, publicUrl };
+  // Supabase returns { url: "/storage/v1/object/upload/sign/...", token: "..." }
+  // The url field may be relative — prepend supabaseUrl if so.
+  const { url: supabaseUrl_field, token } = responseData;
+  console.log(`SIGNED UPLOAD TOKEN - supabase returned url: ${supabaseUrl_field}, token prefix: ${String(token || "").slice(0, 20)}...`);
+
+  let uploadUrl;
+  if (supabaseUrl_field) {
+    uploadUrl = supabaseUrl_field.startsWith("http")
+      ? supabaseUrl_field
+      : `${supabaseUrl}${supabaseUrl_field}`;
+  } else {
+    // Fallback: construct upload URL manually using token as query param
+    uploadUrl = `${supabaseUrl}/storage/v1/object/upload/sign/${supabaseBucket}/${storagePath}?token=${encodeURIComponent(token)}`;
+  }
+
+  const publicUrl = publicStorageUrl(storagePath);
+  console.log(`SIGNED UPLOAD TOKEN - uploadUrl: ${uploadUrl}`);
+  console.log(`SIGNED UPLOAD TOKEN - publicUrl: ${publicUrl}`);
+
+  return {
+    token,
+    uploadUrl,      // complete PUT-ready URL (token already embedded)
+    storagePath,
+    publicUrl,
+    bucket: supabaseBucket,
+    debug: { endpoint, storagePath, supabaseReturnedUrl: supabaseUrl_field },
+  };
 };
 
 const testSupabase = async () => {
