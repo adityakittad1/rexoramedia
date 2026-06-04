@@ -416,17 +416,23 @@ h2 {
 }
 
 .hero-actions {
+  position: relative;
+  z-index: 8;
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
+  pointer-events: auto;
 }
 
 .button {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
-  min-height: 52px;
+  min-height: 56px;
   align-items: center;
   justify-content: center;
-  padding: 0 22px;
+  min-width: 174px;
+  padding: 0 26px;
   border: 1px solid color-mix(in srgb, var(--primary) 80%, white);
   border-radius: 999px;
   color: var(--text);
@@ -447,6 +453,7 @@ h2 {
 }
 
 .button:hover {
+  transform: translateY(-3px);
   border-color: color-mix(in srgb, var(--accent) 70%, white);
   box-shadow: 0 24px 80px color-mix(in srgb, var(--accent) 24%, transparent);
 }
@@ -474,7 +481,16 @@ h2 {
 }
 
 section {
-  padding: 112px clamp(18px, 6vw, 86px);
+  padding: clamp(68px, 6vw, 96px) clamp(18px, 6vw, 86px);
+}
+
+.marquee-section,
+.studio,
+.motion-lab,
+.team-section,
+.social-section,
+.contact-section {
+  display: none;
 }
 
 .split-section,
@@ -806,6 +822,20 @@ section {
 .founder-card:hover .founder-image-wrap video {
   transform: scale(1.08);
   filter: saturate(1.22) contrast(1.16);
+}
+
+.founder-spotlight.is-video video,
+.founder-image-wrap.is-video video {
+  filter: none;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: auto;
+}
+
+.founder-card:hover .founder-image-wrap.is-video video,
+.founder-spotlight.is-video:hover video {
+  transform: translateZ(0);
+  filter: none;
 }
 
 .founder-copy {
@@ -1413,7 +1443,7 @@ section {
 .video-showcase,
 .testimonials-section,
 .team-section {
-  padding-block: clamp(78px, 8vw, 132px);
+  padding-block: clamp(62px, 6vw, 104px);
 }
 
 .section-copy {
@@ -1430,13 +1460,13 @@ section {
 
 .services-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: 14px;
   border: 0;
   background: transparent;
 }
 
 .service-card {
-  min-height: 360px;
+  min-height: 292px;
   display: grid;
   align-content: end;
   isolation: isolate;
@@ -1509,14 +1539,14 @@ section {
 }
 
 .service-icon-wrap {
-  width: 66px;
-  height: 66px;
+  width: 54px;
+  height: 54px;
   border-radius: 2px;
 }
 
 .service-card h3 {
   max-width: 620px;
-  font-size: clamp(2.1rem, 3vw, 3.8rem);
+  font-size: clamp(1.72rem, 2.45vw, 3rem);
 }
 
 .motion-lab {
@@ -1536,13 +1566,13 @@ section {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
-  margin-top: 48px;
+  margin-top: 34px;
 }
 
 .work-card {
-  min-height: 520px;
+  min-height: 430px;
   display: grid;
-  grid-template-rows: minmax(260px, 0.78fr) auto;
+  grid-template-rows: minmax(220px, 0.7fr) auto;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.045);
@@ -1630,7 +1660,7 @@ section {
 }
 
 .testimonial-card {
-  min-height: 360px;
+  min-height: 290px;
   border: 1px solid rgba(255,255,255,0.1);
   background:
     radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 12rem),
@@ -1651,11 +1681,11 @@ section {
 }
 
 .cta-section {
-  padding-block: clamp(74px, 8vw, 132px);
+  padding-block: clamp(62px, 6vw, 104px);
 }
 
 .cta-panel {
-  min-height: clamp(420px, 42vw, 620px);
+  min-height: clamp(330px, 32vw, 480px);
   display: grid;
   align-content: end;
   padding: clamp(28px, 6vw, 76px);
@@ -1962,6 +1992,18 @@ section {
   .hero-inner {
     padding: 18px;
     border-left-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  .hero-actions {
+    gap: 10px;
+  }
+
+  .hero-actions .button {
+    flex: 1 1 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding-inline: 18px;
+    font-size: 0.72rem;
   }
 
   .founder-section {

@@ -31,8 +31,31 @@
     ],
     "primaryCta": "Start Growing",
     "secondaryCta": "Explore Services",
-    "overlayDarkness": 72,
-    "overlayBlur": 2
+    "overlayDarkness": 0,
+    "overlayBlur": 0,
+    "videos": [
+      {
+        "id": "0c39b395-6a6a-4ea3-afc9-1e18e2a96da5",
+        "title": "VID_20260604_155315",
+        "url": "/uploads/1780571779800-c9c149113235.mp4",
+        "poster": "",
+        "visible": true
+      },
+      {
+        "id": "44923f8b-fd09-4ae1-b7d0-e0c2db2255b8",
+        "title": "VID_20260604_155305",
+        "url": "/uploads/1780571779098-d5e9bd464b5c.mp4",
+        "poster": "",
+        "visible": true
+      },
+      {
+        "id": "2f5c90e8-7d8b-4d3a-808b-4be814781d67",
+        "title": "VID_20260604_155322",
+        "url": "/uploads/1780571780418-63ee9cf0416a.mp4",
+        "poster": "",
+        "visible": true
+      }
+    ]
   },
   "animations": {
     "enabled": true,
@@ -84,7 +107,9 @@
         "url": "https://wa.me/919112646267",
         "visible": true
       }
-    ]
+    ],
+    "video": "/uploads/1780571828030-8a63051b80f0.mp4",
+    "mediaType": "video"
   },
   "services": [
     {
