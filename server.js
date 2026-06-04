@@ -292,7 +292,7 @@ const createSignedUploadToken = async ({ name, type, folder }) => {
   const tokenResponse = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: supabaseHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({}),
+    body: JSON.stringify({ expiresIn: 7200 }),
   }, 12_000);
 
   console.log(`SIGNED UPLOAD TOKEN - Supabase response status: ${tokenResponse.status}`);
