@@ -303,8 +303,8 @@ const createSignedUploadToken = async ({ name, type, folder }) => {
   const storagePath = `${safeStorageFolder(folder, type)}/${safeStorageName(name, type)}`;
   console.log(`SIGNED UPLOAD TOKEN - bucket: ${supabaseBucket}, storagePath: ${storagePath}`);
 
-  // Supabase REST: POST /storage/v1/object/sign/upload/{bucket}/{path_within_bucket}
-  const endpoint = `${supabaseUrl}/storage/v1/object/sign/upload/${supabaseBucket}/${storagePath}`;
+  // Supabase REST: POST /storage/v1/object/upload/sign/{bucket}/{path_within_bucket}
+  const endpoint = `${supabaseUrl}/storage/v1/object/upload/sign/${supabaseBucket}/${storagePath}`;
   console.log(`SIGNED UPLOAD TOKEN - calling endpoint: ${endpoint}`);
 
   const tokenResponse = await fetchWithTimeout(endpoint, {
@@ -319,7 +319,18 @@ const createSignedUploadToken = async ({ name, type, folder }) => {
   if (!tokenResponse.ok) {
     let payload;
     try { payload = JSON.parse(responseText); } catch { payload = { message: responseText }; }
-    throw new Error(payload.message || `Supabase signed URL failed with status ${tokenResponse.status}`);
+    const error = new Error(payload.message || `Supabase signed URL failed with status ${tokenResponse.status}`);
+    error.diagnostics = {
+      bucket: supabaseBucket,
+      uploadPath: storagePath,
+      fileName: path.basename(storagePath),
+      fileType: type || "application/octet-stream",
+      signedUploadEndpoint: endpoint,
+      signedUploadUrlStatus: tokenResponse.status,
+      signedUploadUrlResponse: payload,
+      publicUrl: publicStorageUrl(storagePath),
+    };
+    throw error;
   }
 
   let responseData;
@@ -623,6 +634,7 @@ const handler = async (request, response) => {
           success: false,
           stage: "token_generation",
           error: error.message,
+          diagnostics: error.diagnostics || null,
           supabaseUrlLoaded: Boolean(supabaseUrl),
           supabaseKeyLoaded: Boolean(supabaseAnonKey),
         });
