@@ -58,19 +58,24 @@ const sendJson = (response, status, payload, headers = {}) => {
   send(response, status, JSON.stringify(payload), { "Content-Type": types[".json"], ...headers });
 };
 
-const getBody = (request) =>
+const getRawBody = (request) =>
   new Promise((resolve, reject) => {
-    let body = "";
+    const chunks = [];
+    let size = 0;
     request.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > maxPayloadBytes) {
+      size += chunk.length;
+      if (size > maxPayloadBytes) {
         reject(new Error("Payload too large"));
         request.destroy();
+        return;
       }
+      chunks.push(chunk);
     });
-    request.on("end", () => resolve(body));
+    request.on("end", () => resolve(Buffer.concat(chunks)));
     request.on("error", reject);
   });
+
+const getBody = async (request) => (await getRawBody(request)).toString("utf8");
 
 const parseCookies = (request) => {
   const header = request.headers.cookie || "";
@@ -143,12 +148,26 @@ const login = async (request, response) => {
 
 const saveUpload = async (request, response) => {
   if (!requireAdmin(request, response)) return;
-  const { name, type, data } = JSON.parse(await getBody(request));
-  if (!data || !data.startsWith("data:")) return sendJson(response, 400, { ok: false, message: "Invalid media" });
+  const rawName = request.headers["x-file-name"] ? decodeURIComponent(request.headers["x-file-name"]) : "";
+  const rawType = request.headers["x-file-type"] || request.headers["content-type"] || "application/octet-stream";
+  let name = rawName;
+  let type = rawType;
+  let buffer = null;
+
+  if (rawName) {
+    buffer = await getRawBody(request);
+  } else {
+    const payload = JSON.parse(await getBody(request));
+    name = payload.name;
+    type = payload.type;
+    if (!payload.data || !payload.data.startsWith("data:")) return sendJson(response, 400, { ok: false, message: "Invalid media" });
+    buffer = Buffer.from(payload.data.split(",")[1], "base64");
+  }
+
+  if (!buffer?.length) return sendJson(response, 400, { ok: false, message: "Empty media file" });
   const extension = path.extname(name || "") || `.${(type || "png").split("/").pop()}`;
   const fileName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${extension.replace(/[^.\w]/g, "")}`;
-  const base64 = data.split(",")[1];
-  fs.writeFileSync(path.join(uploadDir, fileName), Buffer.from(base64, "base64"));
+  fs.writeFileSync(path.join(uploadDir, fileName), buffer);
   sendJson(response, 200, { ok: true, url: `/uploads/${fileName}`, name: fileName, type });
 };
 

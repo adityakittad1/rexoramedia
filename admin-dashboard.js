@@ -421,19 +421,29 @@ const renderMedia = async () => {
   });
 };
 
-const uploadFile = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: file.name, type: file.type, data: reader.result }),
-    });
-    response.ok ? resolve(response.json().then((payload) => ({ ...payload, dataUrl: reader.result }))) : reject(new Error("Upload failed"));
-  };
-  reader.onerror = reject;
-  reader.readAsDataURL(file);
-});
+const uploadFile = async (file) => {
+  const maxMb = 180;
+  if (file.size > maxMb * 1024 * 1024) {
+    throw new Error(`Please upload a video below ${maxMb}MB for this local CMS.`);
+  }
+
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-File-Name": encodeURIComponent(file.name),
+      "X-File-Type": file.type || "application/octet-stream",
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || "Upload failed");
+  }
+
+  return response.json();
+};
 
 const optimizeFounderImage = (file) => new Promise((resolve, reject) => {
   if (!file.type.startsWith("image/")) {
