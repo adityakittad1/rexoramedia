@@ -281,6 +281,34 @@ const deleteSupabaseMedia = async (storagePath) => {
   }
 };
 
+// Generate a Supabase signed upload URL so the browser can upload
+// directly to Supabase — bypassing Vercel's 4.5MB request body limit.
+const createSignedUploadToken = async ({ name, type, folder }) => {
+  requireSupabase();
+  const storagePath = `${safeStorageFolder(folder, type)}/${safeStorageName(name, type)}`;
+  console.log(`SIGNED UPLOAD TOKEN - generating for path: ${storagePath}`);
+
+  const endpoint = `${supabaseUrl}/storage/v1/object/sign/upload/${supabaseBucket}/${storagePath}`;
+  const tokenResponse = await fetchWithTimeout(endpoint, {
+    method: "POST",
+    headers: supabaseHeaders({ "Content-Type": "application/json" }),
+  }, 12_000);
+
+  console.log(`SIGNED UPLOAD TOKEN - Supabase response status: ${tokenResponse.status}`);
+  if (!tokenResponse.ok) {
+    const payload = await tokenResponse.json().catch(async () => ({ message: await tokenResponse.text().catch(() => "") }));
+    console.error("SIGNED UPLOAD TOKEN - Error:", payload);
+    throw new Error(payload.message || `Supabase signed URL failed with status ${tokenResponse.status}`);
+  }
+
+  const { token } = await tokenResponse.json();
+  const signedUrl = `${supabaseUrl}/storage/v1/object/upload/sign/${supabaseBucket}/${storagePath}`;
+  const publicUrl = publicStorageUrl(storagePath);
+
+  console.log(`SIGNED UPLOAD TOKEN - generated: path=${storagePath}`);
+  return { token, signedUrl, storagePath, publicUrl };
+};
+
 const testSupabase = async () => {
   console.log("SUPABASE TEST - Initiating test upload...");
   const testBuffer = Buffer.from("Supabase connection verification test");
@@ -517,6 +545,29 @@ const handler = async (request, response) => {
       const storagePath = url.searchParams.get("path") || (url.searchParams.get("name") ? `media/library/${path.basename(url.searchParams.get("name"))}` : "");
       if (storagePath) await deleteSupabaseMedia(storagePath);
       return sendJson(response, 200, { ok: true });
+    }
+
+    // GET /api/upload-token — generate a Supabase signed upload URL
+    // so the browser can PUT the file directly to Supabase storage,
+    // completely bypassing Vercel's 4.5MB serverless request body limit.
+    if (request.method === "GET" && pathname === "/api/upload-token") {
+      if (!requireAdmin(request, response)) return;
+      const name = url.searchParams.get("name") || "file";
+      const type = url.searchParams.get("type") || "application/octet-stream";
+      const folder = url.searchParams.get("folder") || "";
+      try {
+        const tokenData = await createSignedUploadToken({ name, type, folder });
+        return sendJson(response, 200, tokenData);
+      } catch (error) {
+        console.error("UPLOAD TOKEN FAILED:", error);
+        return sendJson(response, 500, {
+          success: false,
+          stage: "token_generation",
+          error: error.message,
+          supabaseUrlLoaded: Boolean(supabaseUrl),
+          supabaseKeyLoaded: Boolean(supabaseAnonKey),
+        });
+      }
     }
 
     serveFile(request, response, pathname);

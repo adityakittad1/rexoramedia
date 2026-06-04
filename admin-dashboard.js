@@ -425,28 +425,45 @@ const renderMedia = async () => {
 };
 
 const uploadFile = async (file, folder = "media/library") => {
-  const maxMb = 180;
+  const maxMb = 500;
   if (file.size > maxMb * 1024 * 1024) {
     throw new Error(`Please upload media below ${maxMb}MB.`);
   }
 
-  const response = await fetch("/api/upload", {
-    method: "POST",
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-      "X-File-Name": encodeURIComponent(file.name),
-      "X-File-Type": file.type || "application/octet-stream",
-      "X-Upload-Folder": folder,
-    },
+  // ── Step 1: Ask server to generate a Supabase signed upload URL ──
+  // This is a tiny GET request (just filename metadata) — never hits Vercel's body limit.
+  const tokenParams = new URLSearchParams({
+    name: file.name,
+    type: file.type || "application/octet-stream",
+    folder,
+  });
+  const tokenRes = await fetch(`/api/upload-token?${tokenParams.toString()}`);
+  if (!tokenRes.ok) {
+    const payload = await tokenRes.json().catch(() => ({}));
+    throw new Error(payload.error || payload.message || "Failed to get upload token");
+  }
+  const { token, signedUrl, publicUrl, storagePath } = await tokenRes.json();
+
+  // ── Step 2: Upload file directly from browser to Supabase ──
+  // This completely bypasses Vercel's serverless function — no 4.5MB limit.
+  const uploadRes = await fetch(`${signedUrl}?token=${encodeURIComponent(token)}`, {
+    method: "PUT",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
 
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.error || payload.message || "Upload failed");
+  if (!uploadRes.ok) {
+    const text = await uploadRes.text().catch(() => "");
+    throw new Error(`Supabase direct upload failed (${uploadRes.status}): ${text}`);
   }
 
-  return response.json();
+  return {
+    ok: true,
+    url: publicUrl,
+    path: storagePath,
+    name: file.name,
+    type: file.type,
+  };
 };
 
 const optimizeFounderImage = (file) => new Promise((resolve, reject) => {
