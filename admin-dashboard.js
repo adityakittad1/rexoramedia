@@ -443,7 +443,7 @@ const uploadFile = async (file, folder = "media/library") => {
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || "Upload failed");
+    throw new Error(payload.error || payload.message || "Upload failed");
   }
 
   return response.json();

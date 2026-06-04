@@ -213,7 +213,11 @@ const safeStorageFolder = (value, type) => {
 
 const uploadToSupabase = async ({ name, type, buffer, folder }) => {
   requireSupabase();
+  console.log("SUPABASE CONNECTED");
+  
   const storagePath = `${safeStorageFolder(folder, type)}/${safeStorageName(name, type)}`;
+  console.log(`UPLOAD PATH: ${storagePath}`);
+  
   const endpoint = `${supabaseUrl}/storage/v1/object/${supabaseBucket}/${storagePath}`;
   const uploadResponse = await fetchWithTimeout(endpoint, {
     method: "POST",
@@ -224,10 +228,15 @@ const uploadToSupabase = async ({ name, type, buffer, folder }) => {
     body: buffer,
   }, 45_000);
 
+  console.log(`SUPABASE RESPONSE Status: ${uploadResponse.status}`);
   if (!uploadResponse.ok) {
     const payload = await uploadResponse.json().catch(async () => ({ message: await uploadResponse.text().catch(() => "") }));
+    console.error("SUPABASE RESPONSE Error payload:", payload);
     throw new Error(payload.message || `Supabase upload failed with status ${uploadResponse.status}`);
   }
+
+  const publicUrl = publicStorageUrl(storagePath);
+  console.log(`PUBLIC URL GENERATED: ${publicUrl}`);
 
   return {
     ok: true,
@@ -235,7 +244,7 @@ const uploadToSupabase = async ({ name, type, buffer, folder }) => {
     path: storagePath,
     bucket: supabaseBucket,
     type,
-    url: publicStorageUrl(storagePath),
+    url: publicUrl,
   };
 };
 
@@ -272,6 +281,42 @@ const deleteSupabaseMedia = async (storagePath) => {
   }
 };
 
+const testSupabase = async () => {
+  console.log("SUPABASE TEST - Initiating test upload...");
+  const testBuffer = Buffer.from("Supabase connection verification test");
+  const testName = "test-connection.txt";
+  const testType = "text/plain";
+  const folder = "media/library";
+
+  // 1. Upload Test File
+  const uploadResult = await uploadToSupabase({
+    name: testName,
+    type: testType,
+    buffer: testBuffer,
+    folder,
+  });
+  console.log("SUPABASE TEST - Test upload response:", JSON.stringify(uploadResult));
+
+  // 2. Verify existence by listing
+  console.log("SUPABASE TEST - Listing media to verify...");
+  const files = await listSupabaseMedia();
+  const fileExists = files.some((f) => f.name.endsWith(uploadResult.name));
+  console.log(`SUPABASE TEST - Listing search result: ${fileExists ? "FOUND" : "NOT FOUND"}`);
+
+  // 3. Delete Test File
+  console.log("SUPABASE TEST - Deleting test file...");
+  await deleteSupabaseMedia(uploadResult.path);
+  console.log("SUPABASE TEST - Test file deleted successfully.");
+
+  return {
+    success: true,
+    stage: "test_complete",
+    uploadResult,
+    fileExists,
+    deleted: true,
+  };
+};
+
 const login = async (request, response) => {
   if (!adminEmail || !configuredPasswordHash) {
     return sendJson(response, 500, { ok: false, message: "Admin auth environment variables are not configured." });
@@ -296,6 +341,8 @@ const login = async (request, response) => {
 
 const saveUpload = async (request, response) => {
   if (!requireAdmin(request, response)) return;
+  console.log("UPLOAD STARTED");
+
   const rawName = request.headers["x-file-name"] ? decodeURIComponent(request.headers["x-file-name"]) : "";
   const rawType = request.headers["x-file-type"] || request.headers["content-type"] || "application/octet-stream";
   const folder = request.headers["x-upload-folder"] || "";
@@ -303,19 +350,69 @@ const saveUpload = async (request, response) => {
   let type = rawType;
   let buffer = null;
 
-  if (rawName) {
-    buffer = await getRawBody(request);
-  } else {
-    const payload = JSON.parse(await getBody(request));
-    name = payload.name;
-    type = payload.type;
-    if (!payload.data || !payload.data.startsWith("data:")) return sendJson(response, 400, { ok: false, message: "Invalid media" });
-    buffer = Buffer.from(payload.data.split(",")[1], "base64");
+  try {
+    if (rawName) {
+      buffer = await getRawBody(request);
+    } else {
+      const payload = JSON.parse(await getBody(request));
+      name = payload.name;
+      type = payload.type;
+      if (!payload.data || !payload.data.startsWith("data:")) {
+        console.error("UPLOAD FAILED - Invalid media data format");
+        return sendJson(response, 400, {
+          success: false,
+          stage: "file_read",
+          error: "Invalid media data format (must be data URI)",
+        });
+      }
+      buffer = Buffer.from(payload.data.split(",")[1], "base64");
+    }
+  } catch (error) {
+    console.error("UPLOAD FAILED - Reading file failed:", error);
+    return sendJson(response, 400, {
+      success: false,
+      stage: "file_read",
+      error: error.message,
+    });
   }
 
-  if (!buffer?.length) return sendJson(response, 400, { ok: false, message: "Empty media file" });
-  const uploaded = await uploadToSupabase({ name, type, buffer, folder });
-  sendJson(response, 200, uploaded);
+  if (!buffer?.length) {
+    console.error("UPLOAD FAILED - Empty media file");
+    return sendJson(response, 400, {
+      success: false,
+      stage: "file_read",
+      error: "Empty media file",
+    });
+  }
+
+  console.log(`FILE NAME: ${name}`);
+  console.log(`FILE SIZE: ${buffer.length} bytes`);
+  console.log(`FILE TYPE: ${type}`);
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("UPLOAD FAILED - Supabase credentials not found");
+    return sendJson(response, 500, {
+      success: false,
+      stage: "env_check",
+      error: "SUPABASE_URL or SUPABASE_ANON_KEY is undefined",
+      supabaseUrlLoaded: Boolean(supabaseUrl),
+      supabaseKeyLoaded: Boolean(supabaseAnonKey),
+    });
+  }
+
+  try {
+    const uploaded = await uploadToSupabase({ name, type, buffer, folder });
+    console.log("UPLOAD COMPLETE");
+    sendJson(response, 200, uploaded);
+  } catch (error) {
+    console.error("UPLOAD FAILED - Supabase storage error:", error);
+    return sendJson(response, 500, {
+      success: false,
+      stage: "supabase_upload",
+      error: error.message,
+      bucket: supabaseBucket,
+    });
+  }
 };
 
 const serveFile = (request, response, pathname) => {
@@ -347,6 +444,35 @@ const handler = async (request, response) => {
 
     if (request.method === "GET" && pathname === "/api/site") return sendJson(response, 200, await readSite());
     if (request.method === "GET" && pathname === "/api/health") {
+      const status = {
+        supabaseUrlLoaded: Boolean(supabaseUrl),
+        supabaseKeyLoaded: Boolean(supabaseAnonKey)
+      };
+      console.log("HEALTH CHECK - Env variables validation:", JSON.stringify(status));
+
+      if (url.searchParams.get("test") === "true") {
+        try {
+          const testResults = await testSupabase();
+          return sendJson(response, 200, {
+            ok: true,
+            vercel: isVercel,
+            bucket: supabaseBucket,
+            cmsStoragePath,
+            ...status,
+            testResults
+          });
+        } catch (error) {
+          console.error("SUPABASE CONNECTION TEST FAILED:", error);
+          return sendJson(response, 500, {
+            success: false,
+            stage: "supabase_test",
+            error: error.message,
+            bucket: supabaseBucket,
+            ...status
+          });
+        }
+      }
+
       return sendJson(response, 200, {
         ok: true,
         vercel: isVercel,
@@ -357,6 +483,7 @@ const handler = async (request, response) => {
         hasAdminPasswordHash: Boolean(adminPasswordHash),
         hasAdminPassword: Boolean(adminPassword),
         cmsStoragePath,
+        ...status
       });
     }
     if (request.method === "GET" && pathname === "/api/me") return sendJson(response, 200, { ok: Boolean(getSession(request)) });
@@ -366,8 +493,18 @@ const handler = async (request, response) => {
     }
     if (request.method === "PUT" && pathname === "/api/site") {
       if (!requireAdmin(request, response)) return;
-      await writeSite(JSON.parse(await getBody(request)));
-      return sendJson(response, 200, { ok: true });
+      try {
+        await writeSite(JSON.parse(await getBody(request)));
+        console.log("CMS SAVE SUCCESS");
+        return sendJson(response, 200, { ok: true });
+      } catch (error) {
+        console.error("CMS SAVE FAILED:", error);
+        return sendJson(response, 500, {
+          success: false,
+          stage: "cms_save",
+          error: error.message,
+        });
+      }
     }
     if (request.method === "POST" && pathname === "/api/upload") return await saveUpload(request, response);
     if (request.method === "GET" && pathname === "/api/media") {
@@ -397,3 +534,8 @@ if (require.main === module) {
 }
 
 module.exports = handler;
+module.exports.config = {
+  api: {
+    bodyParser: false,
+  },
+};
