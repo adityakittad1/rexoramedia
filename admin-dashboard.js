@@ -465,12 +465,25 @@ const uploadFile = async (file, folder = "media/library") => {
     throw new Error(`Supabase upload failed (${uploadRes.status}): ${uploadResText}`);
   }
 
+  const verifyRes = await fetch(`/api/verify-object?path=${encodeURIComponent(storagePath)}`);
+  const verifyData = await verifyRes.json().catch(() => ({}));
+  console.log("[Upload] Object verification:", verifyRes.status, verifyData);
+  if (!verifyRes.ok || !verifyData.objectExists) {
+    throw new Error(`Supabase object verification failed (${verifyRes.status}): ${JSON.stringify(verifyData)}`);
+  }
+
   return {
     ok: true,
     url: publicUrl,
     path: storagePath,
     name: file.name,
     type: file.type,
+    diagnostics: {
+      token: tokenData,
+      uploadStatus: uploadRes.status,
+      uploadResponse: uploadResText,
+      verification: verifyData,
+    },
   };
 };
 

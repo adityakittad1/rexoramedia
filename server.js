@@ -9,7 +9,7 @@ const isVercel = Boolean(process.env.VERCEL);
 const dataDir = path.join(root, "data");
 const uploadDir = path.join(root, "uploads");
 const supabaseBucket = "media";
-const cmsStoragePath = "media/cms/site.json";
+const cmsStoragePath = "cms/site.json";
 const maxPayloadBytes = Number(process.env.MAX_UPLOAD_BYTES || 220_000_000);
 let runtimeSite = null;
 
@@ -204,11 +204,13 @@ const publicStorageUrl = (storagePath) =>
   `${supabaseUrl}/storage/v1/object/public/${supabaseBucket}/${storagePath.split("/").map(encodeURIComponent).join("/")}`;
 
 const safeStorageFolder = (value, type) => {
-  const requested = String(value || "").replace(/^\/+|\/+$/g, "");
-  const allowed = new Set(["media/hero", "media/founder", "media/founder-videos", "media/library"]);
+  const requested = String(value || "")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/^media\//, "");
+  const allowed = new Set(["hero", "founder", "founder-videos", "library"]);
   if (allowed.has(requested)) return requested;
-  if (String(type || "").startsWith("video/")) return "media/library";
-  return "media/library";
+  if (String(type || "").startsWith("video/")) return "library";
+  return "library";
 };
 
 const uploadToSupabase = async ({ name, type, buffer, folder }) => {
@@ -253,7 +255,7 @@ const listSupabaseMedia = async () => {
   const response = await fetchWithTimeout(`${supabaseUrl}/storage/v1/object/list/${supabaseBucket}`, {
     method: "POST",
     headers: supabaseHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ prefix: "media", limit: 100, sortBy: { column: "created_at", order: "desc" } }),
+    body: JSON.stringify({ prefix: "", limit: 100, sortBy: { column: "created_at", order: "desc" } }),
   }, 12_000);
   if (!response.ok) return [];
   const files = await response.json();
@@ -261,8 +263,8 @@ const listSupabaseMedia = async () => {
     .filter((file) => file.name && !file.name.endsWith("/"))
     .map((file) => ({
       name: file.name,
-      path: `media/${file.name}`,
-      url: publicStorageUrl(`media/${file.name}`),
+      path: file.name,
+      url: publicStorageUrl(file.name),
       size: file.metadata?.size || 0,
       type: file.metadata?.mimetype || "",
     }));
@@ -279,6 +281,19 @@ const deleteSupabaseMedia = async (storagePath) => {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.message || "Supabase media delete failed");
   }
+};
+
+const verifySupabaseObject = async (storagePath) => {
+  requireSupabase();
+  const publicUrl = publicStorageUrl(storagePath);
+  const headResponse = await fetchWithTimeout(publicUrl, { method: "HEAD" }, 12_000);
+  return {
+    bucket: supabaseBucket,
+    uploadPath: storagePath,
+    objectExists: headResponse.ok,
+    publicUrl,
+    headStatus: headResponse.status,
+  };
 };
 
 // Generate a Supabase signed upload URL so the browser can upload
@@ -334,10 +349,14 @@ const createSignedUploadToken = async ({ name, type, folder }) => {
   return {
     token,
     uploadUrl,      // complete PUT-ready URL (token already embedded)
+    fileName: path.basename(storagePath),
+    fileType: type || "application/octet-stream",
     storagePath,
+    uploadPath: storagePath,
     publicUrl,
     bucket: supabaseBucket,
-    debug: { endpoint, storagePath, supabaseReturnedUrl: supabaseUrl_field },
+    signedUploadUrlResponse: responseData,
+    debug: { bucket: supabaseBucket, endpoint, storagePath, uploadPath: storagePath, supabaseReturnedUrl: supabaseUrl_field },
   };
 };
 
@@ -574,9 +593,17 @@ const handler = async (request, response) => {
     }
     if (request.method === "DELETE" && pathname === "/api/media") {
       if (!requireAdmin(request, response)) return;
-      const storagePath = url.searchParams.get("path") || (url.searchParams.get("name") ? `media/library/${path.basename(url.searchParams.get("name"))}` : "");
+      const storagePath = url.searchParams.get("path") || (url.searchParams.get("name") ? `library/${path.basename(url.searchParams.get("name"))}` : "");
       if (storagePath) await deleteSupabaseMedia(storagePath);
       return sendJson(response, 200, { ok: true });
+    }
+
+    if (request.method === "GET" && pathname === "/api/verify-object") {
+      if (!requireAdmin(request, response)) return;
+      const storagePath = url.searchParams.get("path") || "";
+      if (!storagePath) return sendJson(response, 400, { ok: false, message: "Missing path" });
+      const result = await verifySupabaseObject(storagePath);
+      return sendJson(response, result.objectExists ? 200 : 404, result);
     }
 
     // GET /api/upload-token — generate a Supabase signed upload URL
