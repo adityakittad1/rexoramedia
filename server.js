@@ -2,15 +2,31 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const os = require("os");
 
 const root = __dirname;
 const port = Number(process.env.PORT || 4174);
 const isVercel = Boolean(process.env.VERCEL);
 const dataDir = path.join(root, "data");
-const uploadDir = isVercel ? path.join(os.tmpdir(), "rexora-uploads") : path.join(root, "uploads");
+const uploadDir = path.join(root, "uploads");
+const supabaseBucket = "media";
+const cmsStoragePath = "media/cms/site.json";
 const maxPayloadBytes = Number(process.env.MAX_UPLOAD_BYTES || 220_000_000);
 let runtimeSite = null;
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 25_000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Supabase request timed out. Check Vercel environment variables, bucket policies, and network access.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -39,12 +55,11 @@ const readEnv = () => {
 const localEnv = readEnv();
 const adminEmail = process.env.ADMIN_EMAIL || localEnv.ADMIN_EMAIL;
 const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || localEnv.ADMIN_PASSWORD_HASH;
+const adminPassword = process.env.ADMIN_PASSWORD || localEnv.ADMIN_PASSWORD;
 const sessionSecret = process.env.SESSION_SECRET || localEnv.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const supabaseUrl = (process.env.SUPABASE_URL || localEnv.SUPABASE_URL || "").replace(/\/+$/, "");
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || localEnv.SUPABASE_ANON_KEY;
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
-
-const ensureDirs = () => {
-  fs.mkdirSync(uploadDir, { recursive: true });
-};
 
 const sitePath = () => path.join(dataDir, "site.json");
 const defaultSitePath = () => path.join(dataDir, "site.default.json");
@@ -60,6 +75,10 @@ const sendJson = (response, status, payload, headers = {}) => {
 
 const getRawBody = (request) =>
   new Promise((resolve, reject) => {
+    if (Buffer.isBuffer(request.body)) return resolve(request.body);
+    if (typeof request.body === "string") return resolve(Buffer.from(request.body));
+    if (request.body && typeof request.body === "object" && !request.on) return resolve(Buffer.from(JSON.stringify(request.body)));
+    if (typeof request.on !== "function") return resolve(Buffer.alloc(0));
     const chunks = [];
     let size = 0;
     request.on("data", (chunk) => {
@@ -115,28 +134,151 @@ const safeJoin = (base, target) => {
   return fullPath.startsWith(base) ? fullPath : base;
 };
 
-const readSite = () => {
+const readLocalSite = () => {
   if (runtimeSite) return runtimeSite;
   const source = fs.existsSync(sitePath()) ? sitePath() : defaultSitePath();
   runtimeSite = JSON.parse(fs.readFileSync(source, "utf8"));
   return runtimeSite;
 };
 
-const writeSite = (site) => {
+const readSite = async () => {
+  if (runtimeSite) return runtimeSite;
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const response = await fetchWithTimeout(`${supabaseUrl}/storage/v1/object/public/${supabaseBucket}/${cmsStoragePath}`, {}, 12_000);
+      if (response.ok) {
+        runtimeSite = await response.json();
+        return runtimeSite;
+      }
+    } catch (error) {
+      console.warn(error.message);
+    }
+  }
+  return readLocalSite();
+};
+
+const writeSite = async (site) => {
   runtimeSite = site;
+  if (supabaseUrl && supabaseAnonKey) {
+    const response = await fetchWithTimeout(`${supabaseUrl}/storage/v1/object/${supabaseBucket}/${cmsStoragePath}`, {
+      method: "POST",
+      headers: supabaseHeaders({
+        "Content-Type": "application/json; charset=utf-8",
+        "x-upsert": "true",
+      }),
+      body: JSON.stringify(site, null, 2),
+    }, 18_000);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.message || "Supabase CMS save failed");
+    }
+  }
   if (!isVercel) {
     fs.writeFileSync(sitePath(), JSON.stringify(site, null, 2));
   }
 };
 
 const hashPassword = (value) => crypto.createHash("sha256").update(value).digest("hex");
+const configuredPasswordHash = adminPasswordHash || (adminPassword ? hashPassword(adminPassword) : "");
+
+const requireSupabase = () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase upload environment variables are not available to this server.");
+  }
+};
+
+const supabaseHeaders = (extra = {}) => ({
+  apikey: supabaseAnonKey,
+  Authorization: `Bearer ${supabaseAnonKey}`,
+  ...extra,
+});
+
+const safeStorageName = (name, type) => {
+  const extension = path.extname(name || "") || `.${(type || "application/octet-stream").split("/").pop() || "bin"}`;
+  const base = path.basename(name || "media", extension).replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "media";
+  const cleanExtension = extension.toLowerCase().replace(/[^.\w]/g, "") || ".bin";
+  return `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${base}${cleanExtension}`;
+};
+
+const publicStorageUrl = (storagePath) =>
+  `${supabaseUrl}/storage/v1/object/public/${supabaseBucket}/${storagePath.split("/").map(encodeURIComponent).join("/")}`;
+
+const safeStorageFolder = (value, type) => {
+  const requested = String(value || "").replace(/^\/+|\/+$/g, "");
+  const allowed = new Set(["media/hero", "media/founder", "media/founder-videos", "media/library"]);
+  if (allowed.has(requested)) return requested;
+  if (String(type || "").startsWith("video/")) return "media/library";
+  return "media/library";
+};
+
+const uploadToSupabase = async ({ name, type, buffer, folder }) => {
+  requireSupabase();
+  const storagePath = `${safeStorageFolder(folder, type)}/${safeStorageName(name, type)}`;
+  const endpoint = `${supabaseUrl}/storage/v1/object/${supabaseBucket}/${storagePath}`;
+  const uploadResponse = await fetchWithTimeout(endpoint, {
+    method: "POST",
+    headers: supabaseHeaders({
+      "Content-Type": type || "application/octet-stream",
+      "x-upsert": "false",
+    }),
+    body: buffer,
+  }, 45_000);
+
+  if (!uploadResponse.ok) {
+    const payload = await uploadResponse.json().catch(async () => ({ message: await uploadResponse.text().catch(() => "") }));
+    throw new Error(payload.message || `Supabase upload failed with status ${uploadResponse.status}`);
+  }
+
+  return {
+    ok: true,
+    name: path.basename(storagePath),
+    path: storagePath,
+    bucket: supabaseBucket,
+    type,
+    url: publicStorageUrl(storagePath),
+  };
+};
+
+const listSupabaseMedia = async () => {
+  if (!supabaseUrl || !supabaseAnonKey) return [];
+  const response = await fetchWithTimeout(`${supabaseUrl}/storage/v1/object/list/${supabaseBucket}`, {
+    method: "POST",
+    headers: supabaseHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ prefix: "media", limit: 100, sortBy: { column: "created_at", order: "desc" } }),
+  }, 12_000);
+  if (!response.ok) return [];
+  const files = await response.json();
+  return files
+    .filter((file) => file.name && !file.name.endsWith("/"))
+    .map((file) => ({
+      name: file.name,
+      path: `media/${file.name}`,
+      url: publicStorageUrl(`media/${file.name}`),
+      size: file.metadata?.size || 0,
+      type: file.metadata?.mimetype || "",
+    }));
+};
+
+const deleteSupabaseMedia = async (storagePath) => {
+  requireSupabase();
+  const response = await fetchWithTimeout(`${supabaseUrl}/storage/v1/object/${supabaseBucket}`, {
+    method: "DELETE",
+    headers: supabaseHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ prefixes: [storagePath] }),
+  }, 18_000);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || "Supabase media delete failed");
+  }
+};
 
 const login = async (request, response) => {
-  if (!adminEmail || !adminPasswordHash) {
+  if (!adminEmail || !configuredPasswordHash) {
     return sendJson(response, 500, { ok: false, message: "Admin auth environment variables are not configured." });
   }
-  const { email, password } = JSON.parse(await getBody(request));
-  const isValid = normalizeEmail(email) === normalizeEmail(adminEmail) && hashPassword(password || "") === adminPasswordHash;
+  const rawBody = await getBody(request);
+  const { email, password } = JSON.parse(rawBody || "{}");
+  const isValid = normalizeEmail(email) === normalizeEmail(adminEmail) && hashPassword(password || "") === configuredPasswordHash;
   if (!isValid) return sendJson(response, 403, { ok: false, message: "Invalid login" });
   const token = makeToken();
   sendJson(response, 200, { ok: true }, {
@@ -150,6 +292,7 @@ const saveUpload = async (request, response) => {
   if (!requireAdmin(request, response)) return;
   const rawName = request.headers["x-file-name"] ? decodeURIComponent(request.headers["x-file-name"]) : "";
   const rawType = request.headers["x-file-type"] || request.headers["content-type"] || "application/octet-stream";
+  const folder = request.headers["x-upload-folder"] || "";
   let name = rawName;
   let type = rawType;
   let buffer = null;
@@ -165,10 +308,8 @@ const saveUpload = async (request, response) => {
   }
 
   if (!buffer?.length) return sendJson(response, 400, { ok: false, message: "Empty media file" });
-  const extension = path.extname(name || "") || `.${(type || "png").split("/").pop()}`;
-  const fileName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${extension.replace(/[^.\w]/g, "")}`;
-  fs.writeFileSync(path.join(uploadDir, fileName), buffer);
-  sendJson(response, 200, { ok: true, url: `/uploads/${fileName}`, name: fileName, type });
+  const uploaded = await uploadToSupabase({ name, type, buffer, folder });
+  sendJson(response, 200, uploaded);
 };
 
 const serveFile = (request, response, pathname) => {
@@ -187,8 +328,6 @@ const serveFile = (request, response, pathname) => {
   });
 };
 
-ensureDirs();
-
 const handler = async (request, response) => {
   try {
     const url = new URL(request.url, `http://127.0.0.1:${port}`);
@@ -200,28 +339,40 @@ const handler = async (request, response) => {
       return;
     }
 
-    if (request.method === "GET" && pathname === "/api/site") return sendJson(response, 200, readSite());
+    if (request.method === "GET" && pathname === "/api/site") return sendJson(response, 200, await readSite());
+    if (request.method === "GET" && pathname === "/api/health") {
+      return sendJson(response, 200, {
+        ok: true,
+        vercel: isVercel,
+        bucket: supabaseBucket,
+        hasSupabaseUrl: Boolean(supabaseUrl),
+        hasSupabaseAnonKey: Boolean(supabaseAnonKey),
+        hasAdminEmail: Boolean(adminEmail),
+        hasAdminPasswordHash: Boolean(adminPasswordHash),
+        hasAdminPassword: Boolean(adminPassword),
+        cmsStoragePath,
+      });
+    }
     if (request.method === "GET" && pathname === "/api/me") return sendJson(response, 200, { ok: Boolean(getSession(request)) });
-    if (request.method === "POST" && pathname === "/api/login") return login(request, response);
+    if (request.method === "POST" && pathname === "/api/login") return await login(request, response);
     if (request.method === "POST" && pathname === "/api/logout") {
       return sendJson(response, 200, { ok: true }, { "Content-Type": types[".json"], "Set-Cookie": "rexora_session=; Path=/; Max-Age=0" });
     }
     if (request.method === "PUT" && pathname === "/api/site") {
       if (!requireAdmin(request, response)) return;
-      writeSite(JSON.parse(await getBody(request)));
+      await writeSite(JSON.parse(await getBody(request)));
       return sendJson(response, 200, { ok: true });
     }
-    if (request.method === "POST" && pathname === "/api/upload") return saveUpload(request, response);
+    if (request.method === "POST" && pathname === "/api/upload") return await saveUpload(request, response);
     if (request.method === "GET" && pathname === "/api/media") {
       if (!requireAdmin(request, response)) return;
-      const files = fs.readdirSync(uploadDir).map((name) => ({ name, url: `/uploads/${name}` }));
+      const files = await listSupabaseMedia();
       return sendJson(response, 200, { files });
     }
     if (request.method === "DELETE" && pathname === "/api/media") {
       if (!requireAdmin(request, response)) return;
-      const name = path.basename(url.searchParams.get("name") || "");
-      const filePath = path.join(uploadDir, name);
-      if (name && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      const storagePath = url.searchParams.get("path") || (url.searchParams.get("name") ? `media/library/${path.basename(url.searchParams.get("name"))}` : "");
+      if (storagePath) await deleteSupabaseMedia(storagePath);
       return sendJson(response, 200, { ok: true });
     }
 

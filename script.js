@@ -6,10 +6,12 @@ let typingIndex = 0;
 let typingTimer = null;
 let heroVideoTeardown = null;
 
-const mediaMarkup = (url, alt = "") => {
+const mediaMarkup = (url, alt = "", options = {}) => {
   if (!url) return "";
   if (/^(data:video\/|blob:)/i.test(url) || /\.(mp4|webm|ogg)$/i.test(url)) {
-    return `<video src="${url}" autoplay muted loop playsinline></video>`;
+    const preload = options.preload || "metadata";
+    const loading = options.autoplay === false ? "" : "autoplay";
+    return `<video src="${url}" ${loading} muted loop playsinline preload="${preload}"></video>`;
   }
   return `<img src="${url}" alt="${alt}" loading="lazy" decoding="async" />`;
 };
@@ -60,7 +62,7 @@ const renderHeroMedia = (hero) => {
   holder.className = "hero-media is-video-system";
   holder.innerHTML = `
     <video class="hero-video is-active" data-hero-video-a muted playsinline preload="auto"></video>
-    <video class="hero-video" data-hero-video-b muted playsinline preload="auto"></video>
+    <video class="hero-video" data-hero-video-b muted playsinline preload="metadata"></video>
     <div class="hero-video-bloom" aria-hidden="true"></div>
   `;
   bindHeroVideoSystem(videos);
@@ -77,13 +79,13 @@ const bindHeroVideoSystem = (videos) => {
   let observer = null;
   let inView = true;
 
-  const loadVideo = (element, item) => {
+  const loadVideo = (element, item, shouldBuffer = false) => {
     element.src = item.url;
     element.poster = item.poster || "";
     element.loop = videos.length === 1;
     element.muted = true;
     element.playsInline = true;
-    element.preload = "auto";
+    element.preload = shouldBuffer ? "auto" : "metadata";
     element.load();
   };
 
@@ -95,7 +97,7 @@ const bindHeroVideoSystem = (videos) => {
   const preloadNext = () => {
     if (videos.length < 2) return;
     const nextIndex = (index + 1) % videos.length;
-    loadVideo(slots[1 - active], videos[nextIndex]);
+    loadVideo(slots[1 - active], videos[nextIndex], true);
   };
 
   const transitionNext = () => {
@@ -119,7 +121,7 @@ const bindHeroVideoSystem = (videos) => {
     }, 2200);
   };
 
-  loadVideo(slots[active], videos[index]);
+  loadVideo(slots[active], videos[index], true);
   preloadNext();
   playActive();
   slots.forEach((slot) => slot.addEventListener("ended", transitionNext));
@@ -172,8 +174,17 @@ const renderSite = () => {
   $("[data-reel-media]").innerHTML = mediaMarkup(heroImage, "Rexora reel media");
   $("[data-hero-heading]").textContent = hero.heading;
   $("[data-hero-subheading]").textContent = hero.subheading;
-  $("[data-primary-cta]").textContent = hero.primaryCta;
-  $("[data-secondary-cta]").textContent = hero.secondaryCta;
+  const primaryCta = String(hero.primaryCta || "").trim();
+  const secondaryCta = String(hero.secondaryCta || "").trim();
+  const primaryLabel = primaryCta && !/^start (growing|a project)$/i.test(primaryCta) ? primaryCta : "Schedule a Call";
+  const secondaryLabel = secondaryCta && !/^explore services$/i.test(secondaryCta) ? secondaryCta : "View Our Work";
+  const primaryButton = $("[data-primary-cta]");
+  const secondaryButton = $("[data-secondary-cta]");
+  primaryButton.textContent = primaryLabel;
+  secondaryButton.textContent = secondaryLabel;
+  primaryButton.href = "#contact";
+  primaryButton.setAttribute("data-schedule-call", "");
+  secondaryButton.href = "#videos";
   $("[data-intro-headline]").textContent = content.introHeadline;
   $("[data-intro-text]").textContent = content.introText;
   $("[data-scale-headline]").textContent = content.scaleHeadline;
@@ -286,7 +297,9 @@ const renderSite = () => {
     const founderFrame = $("[data-founder-image]");
     founderFrame.classList.toggle("is-video", founderType === "video");
     founderFrame.classList.toggle("is-image", founderType !== "video");
-    founderFrame.innerHTML = mediaMarkup(founderMedia, founder.name);
+    founderFrame.innerHTML = founderType === "video"
+      ? mediaMarkup(founderMedia, founder.name, { preload: "metadata" })
+      : mediaMarkup(founderMedia, founder.name);
     $("[data-founder-name]").textContent = founder.name;
     $("[data-founder-role]").textContent = founder.role;
     $("[data-founder-bio]").textContent = founder.bio;

@@ -123,7 +123,7 @@ const renderHeroVideos = () => {
     <article class="editor-card hero-video-admin-card" draggable="true" data-hero-video-index="${index}">
       <div class="hero-video-preview">
         ${video.url
-          ? `<video src="${video.url}" muted autoplay loop playsinline preload="metadata"></video>`
+          ? `<video src="${video.url}" muted controls playsinline preload="metadata"></video>`
           : "<span>Upload a landscape video or paste a URL</span>"}
       </div>
       <label>Label<input data-hero-video-field="title" value="${video.title || `Hero Video ${index + 1}`}" /></label>
@@ -273,7 +273,7 @@ const renderFounder = () => {
     <div class="founder-preview-media ${isVideo ? "is-video" : "is-image"}">
       ${media
         ? isVideo
-          ? `<video src="${media}" autoplay muted loop playsinline></video>`
+          ? `<video src="${media}" controls muted playsinline preload="metadata"></video>`
           : `<img src="${media}" alt="${site.founder.name || "Founder"}" />`
           : "<span>No founder media selected</span>"}
     </div>
@@ -408,23 +408,26 @@ const renderMedia = async () => {
       <article class="media-item">
         ${isVideo ? `<video src="${file.url}" controls></video>` : `<img src="${file.url}" alt="${file.name}" />`}
         <code>${file.url}</code>
-        <button type="button" data-delete-media="${file.name}">Delete</button>
+        <button type="button" data-delete-media="${file.name}" data-delete-path="${file.path || ""}">Delete</button>
       </article>
     `;
   }).join("");
   $$("[data-delete-media]").forEach((button) => {
     button.onclick = async () => {
-      await fetch(`/api/media?name=${encodeURIComponent(button.dataset.deleteMedia)}`, { method: "DELETE" });
+      const query = button.dataset.deletePath
+        ? `path=${encodeURIComponent(button.dataset.deletePath)}`
+        : `name=${encodeURIComponent(button.dataset.deleteMedia)}`;
+      await fetch(`/api/media?${query}`, { method: "DELETE" });
       toast("Media deleted");
       renderMedia();
     };
   });
 };
 
-const uploadFile = async (file) => {
+const uploadFile = async (file, folder = "media/library") => {
   const maxMb = 180;
   if (file.size > maxMb * 1024 * 1024) {
-    throw new Error(`Please upload a video below ${maxMb}MB for this local CMS.`);
+    throw new Error(`Please upload media below ${maxMb}MB.`);
   }
 
   const response = await fetch("/api/upload", {
@@ -433,6 +436,7 @@ const uploadFile = async (file) => {
       "Content-Type": file.type || "application/octet-stream",
       "X-File-Name": encodeURIComponent(file.name),
       "X-File-Type": file.type || "application/octet-stream",
+      "X-Upload-Folder": folder,
     },
     body: file,
   });
@@ -462,7 +466,13 @@ const optimizeFounderImage = (file) => new Promise((resolve, reject) => {
       canvas.height = Math.max(1, Math.round(image.height * scale));
       const context = canvas.getContext("2d");
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.86));
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Could not optimize founder image."));
+          return;
+        }
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+      }, "image/jpeg", 0.86);
     };
     image.onerror = () => reject(new Error("Could not read founder image."));
     image.src = reader.result;
@@ -518,7 +528,7 @@ const bindActions = () => {
       site.hero ||= {};
       site.hero.videos ||= [];
       for (const file of files) {
-        const uploaded = await uploadFile(file);
+        const uploaded = await uploadFile(file, "media/hero");
         site.hero.videos.push({
           id: crypto.randomUUID(),
           title: file.name.replace(/\.[^.]+$/, ""),
@@ -543,14 +553,16 @@ const bindActions = () => {
       site.founder ||= { name: "", role: "", bio: "", image: "", video: "", mediaType: "image", socials: [] };
       if (file.type.startsWith("video/")) {
         toast("Uploading founder video...");
-        const uploaded = await uploadFile(file);
+        const uploaded = await uploadFile(file, "media/founder-videos");
         site.founder.mediaType = "video";
         site.founder.video = uploaded.url;
       } else {
         toast("Optimizing founder image...");
         const optimizedImage = await optimizeFounderImage(file);
+        toast("Uploading founder image...");
+        const uploaded = await uploadFile(optimizedImage, "media/founder");
         site.founder.mediaType = "image";
-        site.founder.image = optimizedImage;
+        site.founder.image = uploaded.url;
       }
       bindInputs();
       renderFounder();
@@ -580,9 +592,18 @@ const bindActions = () => {
     renderTeam();
   };
   $("[data-upload]").addEventListener("change", async (event) => {
-    for (const file of event.target.files) await uploadFile(file);
-    toast("Media uploaded");
-    renderMedia();
+    const files = [...(event.target.files || [])];
+    if (!files.length) return;
+    try {
+      toast("Uploading media to Supabase...");
+      for (const file of files) await uploadFile(file);
+      toast("Supabase media uploaded");
+      renderMedia();
+    } catch (error) {
+      toast(error.message || "Media upload failed");
+    } finally {
+      event.target.value = "";
+    }
   });
   $("[data-save]").onclick = async () => {
     await saveSite();
